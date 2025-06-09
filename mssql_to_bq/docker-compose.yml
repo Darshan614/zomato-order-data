@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  pyspark:
+    image: jupyter/pyspark-notebook:latest
+    container_name: pyspark-mssql-to-bq
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./scripts:/home/jovyan/work
+      - ./jars/mssql-jdbc-12.4.2.jre11.jar:/opt/jars/mssql-jdbc.jar
+      - ./jars/spark-3.5-bigquery-0.35.0.jar:/opt/jars/spark-bigquery-with-dependencies.jar
+      - ./keys/service_account.json:/opt/keys/service_account.json
+      - ./jars/gcs-connector-hadoop3-latest.jar:/opt/jars/gcs-connector.jar
+    env_file:
+      - .env
+    environment:
+      - PYSPARK_SUBMIT_ARGS=--jars /opt/jars/mssql-jdbc.jar,/opt/jars/spark-bigquery-with-dependencies.jar --driver-class-path /opt/jars/mssql-jdbc.jar pyspark-shell
+
+

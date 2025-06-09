@@ -1,0 +1,13 @@
+.env
+
+*Untitled*
+*notebook*
+
+*.jar
+
+keys/
+jars/
+__pycache__/
+*.pyc
+
+.ipynb_checkpoints/
