@@ -2,7 +2,7 @@
 
 This project contains ETL pipeline to fetch data of zomato orders from OLTP to OLAP. It fetches data from 3 tables containg data of food, order item and order data.
 
-
+![ER Diagram](/mssql_to_bq/images/Zomato_Physical_ER.png)
  
  
  It comprises of three environments depicting real world developement of spark jobs(from local to stage to prod):
