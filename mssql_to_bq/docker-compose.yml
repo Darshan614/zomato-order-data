@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   pyspark:
-    image: jupyter/pyspark-notebook:latest
+    build: .
     container_name: pyspark-mssql-to-bq
     ports:
       - "8888:8888"

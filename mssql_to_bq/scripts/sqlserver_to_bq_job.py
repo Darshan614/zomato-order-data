@@ -2,17 +2,96 @@ from dependencies.spark import start_spark
 import os
 from pyspark.sql.functions import col,expr,first, sum as Fsum, row_number
 from pyspark.sql.window import Window
+from google.cloud import secretmanager
+import argparse
+
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--env', type=str, default='on-prem',
+                        help='Environment: on-prem, dev, stg, prod')
+    return parser.parse_args()
+
+def access_secrets(env):
+    # log.info(f"Accessing secrets for environment: {env}")
+    if env in ['on-prem', 'dev']:
+        if env == 'on-prem':
+            return {
+                "user": os.getenv("DB_USER_ON_PREM"),
+                "password": os.getenv("DB_PASSWORD_ON_PREM"),
+                "host": os.getenv("DB_HOST_ON_PREM"),
+                "database": os.getenv("DB_NAME_ON_PREM"),
+                "bq_dataset_name": os.getenv("BQ_DATASET_DEV"),
+                "bq_temp_gcs_bucket": os.getenv("BQ_TEMP_GCS_BUCKET_DEV"),
+                "gcp_project_id": os.getenv("GCP_PROJECT_DEV")
+            }
+        else:  # dev
+            return {
+                "user": os.getenv("DB_USER_DEV"),
+                "password": os.getenv("DB_PASSWORD_DEV"),
+                "host": os.getenv("DB_HOST_DEV"),
+                "database": os.getenv("DB_NAME_DEV"),
+                "bq_dataset_name": os.getenv("BQ_DATASET_DEV"),
+                "bq_temp_gcs_bucket": os.getenv("BQ_TEMP_GCS_BUCKET_DEV"),
+                "gcp_project_id": os.getenv("GCP_PROJECT_DEV")
+            }
+    elif env in ['stg', 'prod']:
+        client = secretmanager.SecretManagerServiceClient()
+        project_id = os.getenv("GCP_PROJECT_ID")
+
+        def get_secret(secret_id):
+            name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
+            response = client.access_secret_version(request={"name": name})
+            return response.payload.data.decode('UTF-8')
+
+        return {
+            "user": get_secret(f"{env}-db-user"),
+            "password": get_secret(f"{env}-db-password"),
+            "host": get_secret(f"{env}-db-host"),
+            "database": get_secret(f"{env}-db-name"),
+            "bq_dataset_name": os.getenv("BQ_DATASET_DEV"),
+            "bq_temp_gcs_bucket": os.getenv("BQ_TEMP_GCS_BUCKET_DEV"),
+            "gcp_project_id": os.getenv("GCP_PROJECT_DEV")
+        }
+    
+def get_db_config(env, secrets=None):
+    if secrets is None:
+        secrets = access_secrets(env)
+    jdbc_url = f"jdbc:sqlserver://{secrets['host']}:1433;databaseName={secrets['database']};encrypt=true;trustServerCertificate=true"
+    connection_properties = {
+        "user": secrets["user"],
+        "password": secrets["password"],
+        "driver": "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+    }
+    return jdbc_url, connection_properties
+
+def check_db_connection(spark,log, env, secrets):
+
+    jdbc_url, connection_properties = get_db_config(env, secrets)
+    log.info("Connecting to database...")
+    log.info(f"JDBC URL: {jdbc_url}")
+    log.info(f"Connection Properties: {connection_properties}")
+
+    try:
+        df = spark.read.jdbc(jdbc_url,"food.AllFoodItems",properties=connection_properties)
+        log.info("Connection Successfull")
+    except Exception as e:
+        log.error("Connection Failed")
+        log.error(e)
 
 def main():
+    args = get_args()
+    env = args.env
+    #get all secrets
+    secrets = access_secrets(env)
     print("starting spark")
-    spark, log = start_spark()
+    spark, log = start_spark(secrets=secrets)
     log.info("starting spark done")
 
     log.info('Session Created, Starting ETL job')
-
+    
     #Extract
     log.info("------------EXTRACT STARTED----------")
-    food_items_df, ordered_food_df, orders_df = extract_all_data(spark, log)
+    food_items_df, ordered_food_df, orders_df = extract_all_data(spark, log, env, secrets)
     log.info("------------EXTRACT ENDED----------")
     
     #Transform
@@ -25,41 +104,9 @@ def main():
 
     #Load
     log.info("------------LOAD STARTED_---------")
-    load_to_bq(order_data_running_city, log)    
+    load_to_bq(order_data_running_city, log, secrets)    
     log.info("------------LOAD ENDED----------")
-
-def get_db_config():
-    jdbc_url = "jdbc:sqlserver://host.docker.internal:1433;databaseName=Zomato;encrypt=true;trustServerCertificate=true"
-    connection_properties = {
-        "user": os.getenv("DB_USER"),
-        "password": os.getenv("DB_PASSWORD"),
-        "driver": "com.microsoft.sqlserver.jdbc.SQLServerDriver"
-    }
-    return jdbc_url, connection_properties
-
-def check_db_connection(spark,log):
-    jdbc_url = "jdbc:sqlserver://host.docker.internal:1433;databaseName=Zomato;encrypt=true;trustServerCertificate=true"
-    connection_properties = {
-        "user": os.getenv("DB_USER"),
-        "password": os.getenv("DB_PASSWORD"),
-        "driver": "com.microsoft.sqlserver.jdbc.SQLServerDriver"
-    }
-
-    try:
-        df = spark.read.jdbc(jdbc_url,"food.AllFoodItems",properties=connection_properties)
-        log.info("Connection Successfull")
-    except Exception as e:
-        log.error("Connection Failed")
-        log.error(e)
-
-    jdbc_url, connection_properties = get_db_config()
-    try:
-        df = spark.read.jdbc(jdbc_url, "food.AllFoodItems", properties=connection_properties)
-        df.show(5)
-        log.warn("Connection Successfull")
-    except Exception as e:
-        print("Connection Failed")
-        print(e)
+    return 
 
 def join_df(food_items_df, ordered_food_df, orders_df):
     ordered_food_df = ordered_food_df.join(food_items_df, ordered_food_df.ItemID == food_items_df.ItemID\
@@ -100,10 +147,9 @@ def running_city(order_data_filtered):
     df.limit(5).toPandas()
     return df
 
-def extract_all_data(spark, log):
-
-    check_db_connection(spark, log)
-    jdbc_url, connection_properties = get_db_config()
+def extract_all_data(spark, log, env, secrets):
+    check_db_connection(spark, log, env, secrets)
+    jdbc_url, connection_properties = get_db_config(env, secrets)
 
     food_items_df = spark.read.jdbc(jdbc_url, 'food.AllFoodItems', properties=connection_properties)
     ordered_food_df = spark.read.jdbc(jdbc_url, 'ord.ordered_items', properties=connection_properties)
@@ -120,13 +166,17 @@ def extract_all_data(spark, log):
 
     return food_items_df, ordered_food_df, orders_df
 
-def load_to_bq(order_data_running_city, log):
+def load_to_bq(order_data_running_city, log, secrets):
     try:
+        project_id = secrets["gcp_project_id"]
+        dataset_name = secrets["bq_dataset_name"]
+        temp_gcs_bucket = secrets["bq_temp_gcs_bucket"]
+
         order_data_running_city.write\
         .format('bigquery')\
-        .option('table','zomato-462103.zomato_orders.zomato_orders_trans')\
-        .option('temporaryGcsBucket','zomato-462103-temp')\
-        .option("project", "zomato-462103")\
+        .option('table', f'{project_id}.{dataset_name}.zomato_orders_trans')\
+        .option('temporaryGcsBucket', temp_gcs_bucket)\
+        .option("project", project_id)\
         .mode('append')\
         .save()
         log.info('-------------Data seccussfully written to BigQuery------------')
