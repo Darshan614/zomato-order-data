@@ -63,5 +63,5 @@ jobs:
       - name: Upload Pyspark Job and dependencies to GCS
         run: |
           echo "✅ Uploading to GCS Bucket: $GCS_BUCKET"
-          gsutil -m cp mssql_to_gcs/scripts/sqlserver_to_bq.py gs://${{ env.GCS_BUCKET }}/pyspark/
-          gsutil -m cp -r mssql_to_gcs/scripts/dependencies gs://${{ env.GCS_BUCKET }}/pyspark/
+          gsutil -m cp mssql_to_bq/scripts/sqlserver_to_bq.py gs://${{ env.GCS_BUCKET }}/pyspark/
+          gsutil -m cp -r mssql_to_bq/scripts/dependencies gs://${{ env.GCS_BUCKET }}/pyspark/
