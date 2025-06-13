@@ -48,9 +48,9 @@ def access_secrets(env):
             "password": get_secret(f"{env}-db-password"),
             "host": get_secret(f"{env}-db-host"),
             "database": get_secret(f"{env}-db-name"),
-            "bq_dataset_name": os.getenv("BQ_DATASET_DEV"),
-            "bq_temp_gcs_bucket": os.getenv("BQ_TEMP_GCS_BUCKET_DEV"),
-            "gcp_project_id": os.getenv("GCP_PROJECT_DEV")
+            "bq_dataset_name": os.getenv(f"BQ_DATASET_{env.upper()}"),
+            "bq_temp_gcs_bucket": os.getenv(f"BQ_TEMP_GCS_BUCKET_{env.upper()}"),
+            "gcp_project_id": os.getenv(f"GCP_PROJECT_{env.upper()}")
         }
     
 def get_db_config(env, secrets=None):
