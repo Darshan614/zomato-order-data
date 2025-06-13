@@ -16,9 +16,11 @@ jobs:
       - name: Set ENV
         id: set-env
         run: |
-          if [[ "$GITHUB_REF##*/" == "stage" ]]; then
+          echo "⚙️ GITHUB_REF: $GITHUB_REF"
+          echo "⚙️ Branch name extracted: ${GITHUB_REF##*/}"
+          if [[ "${GITHUB_REF##*/}" == "stage" ]]; then
             echo "ENV=stg" >> $GITHUB_ENV
-          elif [[ "$GITHUB_REF##*/" == "main" ]]; then
+          elif [[ "${GITHUB_REF##*/}" == "main" ]]; then
             echo  "ENV=prod" >> $GITHUB_ENV
           else
             echo "Unknown branch"
