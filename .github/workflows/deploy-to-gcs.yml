@@ -6,7 +6,7 @@ on:
       - stage
       - main
   workflow_dispatch:
-    
+
 jobs:
   upload-to-gcs:
     runs-on: ubuntu-latest
@@ -20,29 +20,46 @@ jobs:
           echo "⚙️ GITHUB_REF: $GITHUB_REF"
           echo "⚙️ Branch name extracted: ${GITHUB_REF##*/}"
           if [[ "${GITHUB_REF##*/}" == "stage" ]]; then
-            echo "ENV=stg" >> $GITHUB_ENV
+            echo "ENV=STG" >> $GITHUB_ENV
           elif [[ "${GITHUB_REF##*/}" == "main" ]]; then
-            echo  "ENV=prod" >> $GITHUB_ENV
+            echo "ENV=PROD" >> $GITHUB_ENV
           else
-            echo "Unknown branch"
+            echo "❌ Unknown branch"
             exit 1
-            fi
+          fi
 
-      - name: Set dynamic secrets
-        id: secrets
+      - name: Export dynamic secrets to ENV
         run: |
-          echo "GCP_PROJECT=${{ secrets['GCP_PROJECT_' + env.ENV | upper] }}" >> $GITHUB_ENV
-          echo "GCS_BUCKET=${{ secrets['GCS_BUCKET_' + env.ENV | upper] }}" >> $GITHUB_ENV
-        shell: bash
+          echo "GCP_PROJECT=${{ secrets.GCP_PROJECT_STG }}" >> $GITHUB_ENV
+          echo "GCS_BUCKET=${{ secrets.GCS_BUCKET_STG }}" >> $GITHUB_ENV
+
+        if: env.ENV == 'STG'
+
+      - name: Export dynamic secrets to ENV
+        run: |
+          echo "GCP_PROJECT=${{ secrets.GCP_PROJECT_PROD }}" >> $GITHUB_ENV
+          echo "GCS_BUCKET=${{ secrets.GCS_BUCKET_PROD }}" >> $GITHUB_ENV
+
+        if: env.ENV == 'PROD'
 
       - name: Authenticate to GCP
         uses: google-github-actions/setup-gcloud@v1
         with:
           project_id: ${{ env.GCP_PROJECT }}
-          service_account_key: ${{ secrets['GCP_SA_KEY_' + env.ENV | upper] }}
+          service_account_key: ${{ secrets.GCP_SA_KEY_STG }}
           export_default_credentials: true
+        if: env.ENV == 'STG'
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ env.GCP_PROJECT }}
+          service_account_key: ${{ secrets.GCP_SA_KEY_PROD }}
+          export_default_credentials: true
+        if: env.ENV == 'PROD'
 
       - name: Upload Pyspark Job and dependencies to GCS
         run: |
+          echo "✅ Uploading to GCS Bucket: $GCS_BUCKET"
           gsutil -m cp scripts/sqlserver_to_bq.py gs://${{ env.GCS_BUCKET }}/pyspark/
           gsutil -m cp -r scripts/dependencies gs://${{ env.GCS_BUCKET }}/pyspark/
