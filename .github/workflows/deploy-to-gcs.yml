@@ -42,21 +42,23 @@ jobs:
 
         if: env.ENV == 'PROD'
 
-      - name: Authenticate to GCP
-        uses: google-github-actions/setup-gcloud@v1
+      - name: Authenticate to GCP (STG)
+        uses: google-github-actions/auth@v1
         with:
-          project_id: ${{ env.GCP_PROJECT }}
-          service_account_key: ${{ secrets.GCP_SA_KEY_STG }}
-          export_default_credentials: true
+          credentials_json: ${{ secrets.GCP_SA_KEY_STG }}
         if: env.ENV == 'STG'
 
-      - name: Authenticate to GCP
+      - name: Authenticate to GCP (PROD)
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_PROD }}
+        if: env.ENV == 'PROD'
+
+      - name: Set up gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
         with:
           project_id: ${{ env.GCP_PROJECT }}
-          service_account_key: ${{ secrets.GCP_SA_KEY_PROD }}
-          export_default_credentials: true
-        if: env.ENV == 'PROD'
+
 
       - name: Upload Pyspark Job and dependencies to GCS
         run: |
