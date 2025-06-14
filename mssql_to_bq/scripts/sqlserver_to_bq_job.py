@@ -1,5 +1,20 @@
 import os
 import sys
+import sys, os, zipfile
+
+print("=== DEBUG: sys.path ===")
+print("\n".join(sys.path))
+
+print("=== DEBUG: ZIP Content ===")
+if os.path.exists("dependencies.zip"):
+    with zipfile.ZipFile("dependencies.zip", "r") as z:
+        print(z.namelist())
+else:
+    print("dependencies.zip not found!")
+
+# Then try the import
+from dependencies.spark import start_spark
+
 print("CWD:", os.getcwd())
 print("Files:", os.listdir())
 sys.path.insert(0, os.path.join(os.getcwd(), "dependencies.zip"))
