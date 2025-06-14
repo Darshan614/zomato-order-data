@@ -1,45 +1,47 @@
 import os
 import sys
-import sys, os, zipfile
+import zipfile
+import argparse
+from pyspark.sql.functions import col, expr, first, sum as Fsum, row_number
+from pyspark.sql.window import Window
+from google.cloud import secretmanager
 
+# --- Fix: Ensure `dependencies` is importable by unzipping into /tmp and inserting /tmp into sys.path
 if 'PYSPARK_PYTHON' in os.environ:
     for path in sys.path:
-        if path.endswith(".zip"):
-            zip_ref = zipfile.ZipFile(path, 'r')
-            zip_ref.extractall("/tmp/dependencies")
-            sys.path.insert(0, "/tmp/dependencies")
+        if path.endswith(".zip") and "dependencies" in path:
+            with zipfile.ZipFile(path, 'r') as zip_ref:
+                zip_ref.extractall("/tmp")  # Unzips to /tmp/dependencies/...
+            sys.path.insert(0, "/tmp")       # So `import dependencies` works
             break
 
+# Debug info
 print("=== DEBUG: sys.path ===")
 print("\n".join(sys.path))
 
-print("=== DEBUG: ZIP Content ===")
+print("=== DEBUG: Contents of /tmp ===")
+print(os.listdir("/tmp"))
+
+# ✅ This should now work!
+from dependencies.spark import start_spark
+
+# Optional: local debugging for ZIP file (not needed in Dataproc)
 if os.path.exists("dependencies.zip"):
+    print("=== DEBUG: Local dependencies.zip Content ===")
     with zipfile.ZipFile("dependencies.zip", "r") as z:
         print(z.namelist())
-else:
-    print("dependencies.zip not found!")
 
-# Then try the import
-from dependencies.spark import start_spark
-
+# Print CWD and files
 print("CWD:", os.getcwd())
 print("Files:", os.listdir())
-sys.path.insert(0, os.path.join(os.getcwd(), "dependencies.zip"))
-# Debug
-print("sys.path:", sys.path)
-from dependencies.spark import start_spark
-import os
-from pyspark.sql.functions import col,expr,first, sum as Fsum, row_number
-from pyspark.sql.window import Window
-from google.cloud import secretmanager
-import argparse
 
+# Argument parsing
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, default='on-prem',
-                        help='Environment: on-prem, dev, stg, prod')
+    parser.add_argument('--env', type=str, default='on-prem', help='Environment: on-prem, dev, stg, prod')
     return parser.parse_args()
+
+
 
 def access_secrets(env):
     # log.info(f"Accessing secrets for environment: {env}")
