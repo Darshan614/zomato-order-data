@@ -1,3 +1,6 @@
+import os
+print("CWD:", os.getcwd())
+print("Files:", os.listdir())
 from dependencies.spark import start_spark
 import os
 from pyspark.sql.functions import col,expr,first, sum as Fsum, row_number
