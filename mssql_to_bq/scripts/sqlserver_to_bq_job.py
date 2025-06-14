@@ -2,6 +2,14 @@ import os
 import sys
 import sys, os, zipfile
 
+if 'PYSPARK_PYTHON' in os.environ:
+    for path in sys.path:
+        if path.endswith(".zip"):
+            zip_ref = zipfile.ZipFile(path, 'r')
+            zip_ref.extractall("/tmp/dependencies")
+            sys.path.insert(0, "/tmp/dependencies")
+            break
+
 print("=== DEBUG: sys.path ===")
 print("\n".join(sys.path))
 
