@@ -1,6 +1,10 @@
 import os
+import sys
 print("CWD:", os.getcwd())
 print("Files:", os.listdir())
+sys.path.insert(0, os.path.join(os.getcwd(), "dependencies.zip"))
+# Debug
+print("sys.path:", sys.path)
 from dependencies.spark import start_spark
 import os
 from pyspark.sql.functions import col,expr,first, sum as Fsum, row_number
