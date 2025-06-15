@@ -3,7 +3,6 @@ import sys
 import argparse
 from pyspark.sql.functions import col, expr, first, sum as Fsum, row_number
 from pyspark.sql.window import Window
-from google.cloud import secretmanager
 
 # --- Fix: Ensure /tmp/dependencies is in sys.path when using --archives
 dependencies_path = "/tmp/dependencies"
@@ -19,6 +18,7 @@ print(os.listdir("/tmp"))
 
 # ✅ This should now work
 from dependencies.spark import start_spark
+from google.cloud import secretmanager
 
 # Optional: Local ZIP debug (if running locally)
 if os.path.exists("dependencies.zip"):
