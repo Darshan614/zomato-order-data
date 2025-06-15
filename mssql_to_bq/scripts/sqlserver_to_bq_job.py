@@ -1,18 +1,14 @@
 import os
 import sys
-import zipfile
 import argparse
 from pyspark.sql.functions import col, expr, first, sum as Fsum, row_number
 from pyspark.sql.window import Window
+from google.cloud import secretmanager
 
-# --- Fix: Ensure `dependencies` is importable by unzipping into /tmp and inserting /tmp into sys.path
-if 'PYSPARK_PYTHON' in os.environ:
-    for path in sys.path:
-        if path.endswith(".zip") and "dependencies" in path:
-            with zipfile.ZipFile(path, 'r') as zip_ref:
-                zip_ref.extractall("/tmp")  # Unzips to /tmp/dependencies/...
-            sys.path.insert(0, "/tmp")       # So `import dependencies` works
-            break
+# --- Fix: Ensure /tmp/dependencies is in sys.path when using --archives
+dependencies_path = "/tmp/dependencies"
+if os.path.isdir(dependencies_path):
+    sys.path.insert(0, dependencies_path)
 
 # Debug info
 print("=== DEBUG: sys.path ===")
@@ -21,16 +17,17 @@ print("\n".join(sys.path))
 print("=== DEBUG: Contents of /tmp ===")
 print(os.listdir("/tmp"))
 
-# ✅ This should now work!
+# ✅ This should now work
 from dependencies.spark import start_spark
-from google.cloud import secretmanager
-# Optional: local debugging for ZIP file (not needed in Dataproc)
+
+# Optional: Local ZIP debug (if running locally)
 if os.path.exists("dependencies.zip"):
     print("=== DEBUG: Local dependencies.zip Content ===")
+    import zipfile
     with zipfile.ZipFile("dependencies.zip", "r") as z:
         print(z.namelist())
 
-# Print CWD and files
+# Print working directory and files
 print("CWD:", os.getcwd())
 print("Files:", os.listdir())
 
