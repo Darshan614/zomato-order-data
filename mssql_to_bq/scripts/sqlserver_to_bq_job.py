@@ -3,41 +3,15 @@ import sys
 import argparse
 from pyspark.sql.functions import col, expr, first, sum as Fsum, row_number
 from pyspark.sql.window import Window
-
-# --- Fix: Ensure /tmp/dependencies is in sys.path when using --archives
-dependencies_path = "/tmp/dependencies"
-if os.path.isdir(dependencies_path):
-    sys.path.insert(0, dependencies_path)
-
-# Debug info
-print("=== DEBUG: sys.path ===")
-print("\n".join(sys.path))
-
-print("=== DEBUG: Contents of /tmp ===")
-print(os.listdir("/tmp"))
-
-# ✅ This should now work
+from dependencies import spark
+print(spark)
 from dependencies.spark import start_spark
 from google.cloud import secretmanager
 
-# Optional: Local ZIP debug (if running locally)
-if os.path.exists("dependencies.zip"):
-    print("=== DEBUG: Local dependencies.zip Content ===")
-    import zipfile
-    with zipfile.ZipFile("dependencies.zip", "r") as z:
-        print(z.namelist())
-
-# Print working directory and files
-print("CWD:", os.getcwd())
-print("Files:", os.listdir())
-
-# Argument parsing
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='on-prem', help='Environment: on-prem, dev, stg, prod')
     return parser.parse_args()
-
-
 
 def access_secrets(env):
     # log.info(f"Accessing secrets for environment: {env}")
