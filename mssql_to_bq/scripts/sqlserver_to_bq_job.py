@@ -5,7 +5,48 @@ from pyspark.sql.functions import col, expr, first, sum as Fsum, row_number
 from pyspark.sql.window import Window
 # from dependencies import spark
 # print(spark)
+os.system('')
 os.system('pip list')
+
+for path in sys.path:
+    print(path)
+
+print("\n--- Python Interpreter Path ---")
+print(sys.executable)
+
+def get_installed_packages():
+    try:
+        command = [sys.executable, "-m", "pip", "list", "--format", "freeze"]
+        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        return result.stdout.splitlines()
+    except subprocess.CalledProcessError as e:
+        print(f"Error running pip list: {e}")
+        print(f"STDOUT: {e.stdout}")
+        print(f"STDERR: {e.stderr}")
+        return []
+
+print("\n--- Pip Installed Packages ---")
+installed_packages = get_installed_packages()
+if installed_packages:
+    for pkg in installed_packages:
+        print(pkg)
+else:
+    print("Could not retrieve installed packages.")
+
+print("\n--- End Environment Details ---")
+
+try:
+    import dependencies
+    print(f"Module 'dependencies' found at: {dependencies.__file__}")
+
+    # Optionally, list contents of the 'dependencies' directory if it's not zipped
+    # This might only work if it's extracted as a directory, not directly from a zip
+    if os.path.isdir(os.path.dirname(dependencies.__file__)):
+        print(f"Contents of 'dependencies' directory:")
+        for item in os.listdir(os.path.dirname(dependencies.__file__)):
+            print(f"  - {item}")
+except ImportError as e:
+    print(f"ERROR: Could not import 'dependencies': {e}")
 
 # from dependencies.spark import start_spark
 # from google.cloud import secretmanager
