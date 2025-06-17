@@ -5,8 +5,10 @@ from pyspark.sql.functions import col, expr, first, sum as Fsum, row_number
 from pyspark.sql.window import Window
 from dependencies import spark
 print(spark)
-from dependencies.spark import start_spark
-from google.cloud import secretmanager
+os.system('pip list')
+
+# from dependencies.spark import start_spark
+# from google.cloud import secretmanager
 
 def get_args():
     parser = argparse.ArgumentParser()
