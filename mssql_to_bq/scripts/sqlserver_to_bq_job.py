@@ -49,8 +49,8 @@ try:
 except ImportError as e:
     print(f"ERROR: Could not import 'dependencies': {e}")
 
-# from dependencies.spark import start_spark
-# from google.cloud import secretmanager
+from dependencies.spark import start_spark
+from google.cloud import secretmanager
 
 def get_args():
     parser = argparse.ArgumentParser()
