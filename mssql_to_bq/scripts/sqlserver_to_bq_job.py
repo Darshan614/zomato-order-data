@@ -3,8 +3,8 @@ import sys
 import argparse
 from pyspark.sql.functions import col, expr, first, sum as Fsum, row_number
 from pyspark.sql.window import Window
-from dependencies import spark
-print(spark)
+# from dependencies import spark
+# print(spark)
 os.system('pip list')
 
 # from dependencies.spark import start_spark
