@@ -1,13 +1,13 @@
 from pyspark.sql import SparkSession
-import pandas as pd
+# import pandas as pd
 import os
 from dependencies import logging
 
-def start_spark(app_name='sqlserver_to_bq', master='local[*]', jar_packages=[], files=[], spark_config={}, secrets=None):
+def start_spark(app_name='sqlserver_to_bq', master='local[*]', jar_packages=[], files=[], spark_config={},secrets=None):
     spark = SparkSession.builder \
     .appName(app_name) \
     .master(master) \
-    .config("parentProject", secrets["gcp_project_id"]) \
+    .config("parentProject", "zomato-462103") \
     .config("spark.hadoop.google.cloud.auth.service.account.enable", "true") \
     .config("spark.hadoop.google.cloud.auth.service.account.json.keyfile", "/opt/keys/service_account.json") \
     .config("spark.hadoop.fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem") \

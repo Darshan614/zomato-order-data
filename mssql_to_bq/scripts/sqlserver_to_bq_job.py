@@ -132,7 +132,9 @@ def main():
     env = args.env
     gcp_project_id = args.gcp_project_id
     #get all secrets
+   
     secrets = access_secrets(env, gcp_project_id)
+    print(secrets)
     print("starting spark")
     spark, log = start_spark(secrets=secrets)
     log.info("starting spark done")
