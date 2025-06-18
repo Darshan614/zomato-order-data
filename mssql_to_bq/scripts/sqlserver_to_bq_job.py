@@ -83,6 +83,7 @@ def access_secrets(env):
     elif env in ['stg', 'prod']:
         client = secretmanager.SecretManagerServiceClient()
         project_id = os.getenv("GCP_PROJECT_ID")
+        print(f"Accessing secrets for environment: {env} in project: {project_id}") 
 
         def get_secret(secret_id):
             name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
