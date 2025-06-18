@@ -55,9 +55,11 @@ from google.cloud import secretmanager
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='on-prem', help='Environment: on-prem, dev, stg, prod')
+    parser.add_argument("--gcp-project-id", type=str, required=True,
+                    help="The Google Cloud Project ID where secrets and BigQuery resources are located.")
     return parser.parse_args()
 
-def access_secrets(env):
+def access_secrets(env, gcp_project_id):
     # log.info(f"Accessing secrets for environment: {env}")
     if env in ['on-prem', 'dev']:
         if env == 'on-prem':
@@ -82,8 +84,8 @@ def access_secrets(env):
             }
     elif env in ['stg', 'prod']:
         client = secretmanager.SecretManagerServiceClient()
-        project_id = os.getenv("GCP_PROJECT_ID")
-        print(f"Accessing secrets for environment: {env} in project: {project_id}") 
+        project_id = gcp_project_id
+        print(f"Accessing secrets for environment: {env} in project: {project_id}")
 
         def get_secret(secret_id):
             name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
@@ -97,7 +99,7 @@ def access_secrets(env):
             "database": get_secret(f"{env}-db-name"),
             "bq_dataset_name": os.getenv(f"BQ_DATASET_{env.upper()}"),
             "bq_temp_gcs_bucket": os.getenv(f"BQ_TEMP_GCS_BUCKET_{env.upper()}"),
-            "gcp_project_id": os.getenv("GCP_PROJECT_ID")
+            "gcp_project_id": project_id
         }
     
 def get_db_config(env, secrets=None):
@@ -128,8 +130,9 @@ def check_db_connection(spark,log, env, secrets):
 def main():
     args = get_args()
     env = args.env
+    gcp_project_id = args.gcp_project_id
     #get all secrets
-    secrets = access_secrets(env)
+    secrets = access_secrets(env, gcp_project_id)
     print("starting spark")
     spark, log = start_spark(secrets=secrets)
     log.info("starting spark done")
