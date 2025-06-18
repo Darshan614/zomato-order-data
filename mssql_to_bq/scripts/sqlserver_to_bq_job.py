@@ -82,7 +82,7 @@ def access_secrets(env):
             }
     elif env in ['stg', 'prod']:
         client = secretmanager.SecretManagerServiceClient()
-        project_id = os.getenv(f"GCP_PROJECT_{env.upper()}")
+        project_id = os.getenv("GCP_PROJECT_ID")
         print(f"Accessing secrets for environment: {env} in project: {project_id}") 
 
         def get_secret(secret_id):
@@ -97,7 +97,7 @@ def access_secrets(env):
             "database": get_secret(f"{env}-db-name"),
             "bq_dataset_name": os.getenv(f"BQ_DATASET_{env.upper()}"),
             "bq_temp_gcs_bucket": os.getenv(f"BQ_TEMP_GCS_BUCKET_{env.upper()}"),
-            "gcp_project_id": os.getenv(f"GCP_PROJECT_{env.upper()}")
+            "gcp_project_id": os.getenv("GCP_PROJECT_ID")
         }
     
 def get_db_config(env, secrets=None):
