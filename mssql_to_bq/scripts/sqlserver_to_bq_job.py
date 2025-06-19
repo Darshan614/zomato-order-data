@@ -102,6 +102,7 @@ def access_secrets(env, gcp_project_id, bq_dataset_name, bq_temp_gcs_bucket):
             "password": get_secret(f"{env}-db-password"),
             "host": get_secret(f"{env}-db-host"),
             "database": get_secret(f"{env}-db-name"),
+            "dproc_sa_key" : get_secret(f"{env}-dproc-sa"),
             "bq_dataset_name": bq_dataset_name,
             "bq_temp_gcs_bucket": bq_temp_gcs_bucket,
             "gcp_project_id": gcp_project_id
