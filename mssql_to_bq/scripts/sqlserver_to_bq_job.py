@@ -57,9 +57,13 @@ def get_args():
     parser.add_argument('--env', type=str, default='on-prem', help='Environment: on-prem, dev, stg, prod')
     parser.add_argument("--gcp-project-id", type=str, required=True,
                     help="The Google Cloud Project ID where secrets and BigQuery resources are located.")
+    parser.add_argument("--bq-dataset-name", type=str, required=True,
+                        help="The BigQuery dataset name for the target table.")
+    parser.add_argument("--bq-temp-gcs-bucket", type=str, required=True,
+                        help="The GCS bucket to use for temporary BigQuery data.")
     return parser.parse_args()
 
-def access_secrets(env, gcp_project_id):
+def access_secrets(env, gcp_project_id, bq_dataset_name, bq_temp_gcs_bucket):
     # log.info(f"Accessing secrets for environment: {env}")
     if env in ['on-prem', 'dev']:
         if env == 'on-prem':
@@ -97,9 +101,9 @@ def access_secrets(env, gcp_project_id):
             "password": get_secret(f"{env}-db-password"),
             "host": get_secret(f"{env}-db-host"),
             "database": get_secret(f"{env}-db-name"),
-            "bq_dataset_name": os.getenv(f"BQ_DATASET_{env.upper()}"),
-            "bq_temp_gcs_bucket": os.getenv(f"BQ_TEMP_GCS_BUCKET_{env.upper()}"),
-            "gcp_project_id": project_id
+            "bq_dataset_name": bq_dataset_name,
+            "bq_temp_gcs_bucket": bq_temp_gcs_bucket,
+            "gcp_project_id": gcp_project_id
         }
     
 def get_db_config(env, secrets=None):
@@ -131,9 +135,11 @@ def main():
     args = get_args()
     env = args.env
     gcp_project_id = args.gcp_project_id
+    bq_dataset_name = args.bq_dataset_name
+    bq_temp_gcs_bucket = args.bq_temp_gcs_bucket
     #get all secrets
    
-    secrets = access_secrets(env, gcp_project_id)
+    secrets = access_secrets(env, gcp_project_id, bq_dataset_name, bq_temp_gcs_bucket)
     print(secrets)
     print("starting spark")
     spark, log = start_spark(secrets=secrets)
