@@ -112,7 +112,7 @@ def get_db_config(env, secrets=None):
     if secrets is None:
         secrets = access_secrets(env)
     # jdbc_url = f"jdbc:sqlserver://{secrets['host']}:1433;databaseName={secrets['database']};encrypt=false;trustServerCertificate=true"
-    jdbc_url = f"jdbc:sqlserver://{secrets['host']}:1433;databaseName={secrets['database']};"
+    jdbc_url = f"jdbc:sqlserver://{secrets['host']}:1433;databaseName={secrets['database']};encrypt=true;trustServerCertificate=true;"
     connection_properties = {
         "user": secrets["user"],
         "password": secrets["password"],
