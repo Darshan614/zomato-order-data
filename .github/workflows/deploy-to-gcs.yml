@@ -69,6 +69,7 @@ jobs:
             echo "zip_needed=true" >> $GITHUB_ENV
           else
             echo "zip_needed=false" >> $GITHUB_ENV
+          fi
 
       - name: Zip dependencies
         if: env.zip_needed == 'true'
