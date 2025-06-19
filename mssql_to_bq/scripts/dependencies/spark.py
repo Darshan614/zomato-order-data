@@ -3,6 +3,7 @@ from pyspark.sql import SparkSession
 import os
 from dependencies import logging
 
+print("function to start spark session")
 def start_spark(app_name='sqlserver_to_bq', master='local[*]', jar_packages=[], files=[], spark_config={},secrets=None):
     spark = SparkSession.builder \
     .appName(app_name) \

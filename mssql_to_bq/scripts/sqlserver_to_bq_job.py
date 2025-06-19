@@ -4,6 +4,7 @@ import argparse
 from pyspark.sql.functions import col, expr, first, sum as Fsum, row_number
 from pyspark.sql.window import Window
 import subprocess
+import inspect
 # from dependencies import spark
 # print(spark)
 os.system('')
@@ -142,6 +143,7 @@ def main():
     secrets = access_secrets(env, gcp_project_id, bq_dataset_name, bq_temp_gcs_bucket)
     print(secrets)
     print("starting spark")
+    print(inspect.getsource(start_spark))
     spark, log = start_spark(secrets=secrets)
     log.info("starting spark done")
 
