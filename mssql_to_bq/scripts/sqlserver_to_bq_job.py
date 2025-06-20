@@ -53,6 +53,25 @@ except ImportError as e:
 from dependencies.spark import start_spark
 from google.cloud import secretmanager
 
+def check_loaded_jars(spark_session: SparkSession):
+    """Prints the list of JARs loaded by the SparkContext."""
+    try:
+        # Access the underlying Java SparkContext
+        jsc = spark_session.sparkContext._jsc.sc()
+        java_jars = jsc.listJars() # This returns a Java Array object
+
+        print("\n--- Spark Loaded JARs ---")
+        if java_jars:
+            # Iterate through the Java array to get the JAR paths
+            for i in range(java_jars.length()):
+                print(f"  - {java_jars.apply(i)}")
+        else:
+            print("  No additional JARs explicitly listed by SparkContext.listJars().")
+        print("---------------------------\n")
+
+    except Exception as e:
+        print(f"ERROR checking loaded JARs: {e}")
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='on-prem', help='Environment: on-prem, dev, stg, prod')
@@ -148,7 +167,7 @@ def main():
     print(inspect.getsource(start_spark))
     spark, log = start_spark(secrets=secrets)
     log.info("starting spark done")
-
+    check_loaded_jars(spark)
     log.info('Session Created, Starting ETL job')
     
     #Extract
