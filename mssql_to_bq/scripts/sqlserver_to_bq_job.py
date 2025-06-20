@@ -130,7 +130,7 @@ def access_secrets(env, gcp_project_id, bq_dataset_name, bq_temp_gcs_bucket):
 def get_db_config(env, secrets=None):
     if secrets is None:
         secrets = access_secrets(env)
-    jdbc_url = f"jdbc:sqlserver://{secrets['host']}:1433;databaseName={secrets['database']};encrypt=true;trustServerCertificate=true"
+    jdbc_url = f"jdbc:sqlserver://{secrets['host']}:1433;databaseName={secrets['database']};encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2"
     # jdbc_url = f"jdbc:sqlserver://{secrets['host']}:1433;databaseName={secrets['database']};encrypt=false;"
     connection_properties = {
         "user": secrets["user"],
