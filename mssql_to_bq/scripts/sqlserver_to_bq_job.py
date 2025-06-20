@@ -53,11 +53,11 @@ except ImportError as e:
 from dependencies.spark import start_spark
 from google.cloud import secretmanager
 
-def check_loaded_jars(spark_session: SparkSession):
+def check_loaded_jars(spark):
     """Prints the list of JARs loaded by the SparkContext."""
     try:
         # Access the underlying Java SparkContext
-        jsc = spark_session.sparkContext._jsc.sc()
+        jsc = spark.sparkContext._jsc.sc()
         java_jars = jsc.listJars() # This returns a Java Array object
 
         print("\n--- Spark Loaded JARs ---")
