@@ -144,12 +144,12 @@ def get_db_config(env, secrets=None):
         f"cloudSqlInstance={secrets['connection_name']};"
         "socketFactory=com.google.cloud.sql.sqlserver.SocketFactory;"
         f"databaseName={secrets['database']};"
-        f"user={secrets['user']};"
-        f"password={secrets['password']};"
         "encrypt=true;trustServerCertificate=true"
     )
 
     connection_properties = {
+        "user": secrets["user"],
+        "password": secrets["password"],
         "driver": "com.microsoft.sqlserver.jdbc.SQLServerDriver"
     }
     return jdbc_url, connection_properties
