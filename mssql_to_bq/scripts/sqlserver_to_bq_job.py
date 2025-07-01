@@ -131,7 +131,8 @@ def access_secrets(env, gcp_project_id, bq_dataset_name, bq_temp_gcs_bucket):
 def get_db_config(env, secrets=None):
     if secrets is None:
         secrets = access_secrets(env)
-    jdbc_url = f"jdbc:sqlserver://127.0.0.1:1433;databaseName={secrets['database']};trustServerCertificate=true"
+    jdbc_url = f"jdbc:sqlserver://127.0.0.1:1433;databaseName={secrets['database']};encrypt=false"
+    # jdbc_url = f"jdbc:sqlserver://127.0.0.1:1433;databaseName={secrets['database']}"
 
     connection_properties = {
         "user": secrets["user"],
