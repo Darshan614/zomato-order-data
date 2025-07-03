@@ -10,67 +10,67 @@ import inspect
 os.system('')
 os.system('pip list')
 
-for path in sys.path:
-    print(path)
+# for path in sys.path:
+#     print(path)
 
-print("\n--- Python Interpreter Path ---")
-print(sys.executable)
+# print("\n--- Python Interpreter Path ---")
+# print(sys.executable)
 
-def get_installed_packages():
-    try:
-        command = [sys.executable, "-m", "pip", "list", "--format", "freeze"]
-        result = subprocess.run(command, capture_output=True, text=True, check=True)
-        return result.stdout.splitlines()
-    except subprocess.CalledProcessError as e:
-        print(f"Error running pip list: {e}")
-        print(f"STDOUT: {e.stdout}")
-        print(f"STDERR: {e.stderr}")
-        return []
+# def get_installed_packages():
+#     try:
+#         command = [sys.executable, "-m", "pip", "list", "--format", "freeze"]
+#         result = subprocess.run(command, capture_output=True, text=True, check=True)
+#         return result.stdout.splitlines()
+#     except subprocess.CalledProcessError as e:
+#         print(f"Error running pip list: {e}")
+#         print(f"STDOUT: {e.stdout}")
+#         print(f"STDERR: {e.stderr}")
+#         return []
 
-print("\n--- Pip Installed Packages ---")
-installed_packages = get_installed_packages()
-if installed_packages:
-    for pkg in installed_packages:
-        print(pkg)
-else:
-    print("Could not retrieve installed packages.")
+# print("\n--- Pip Installed Packages ---")
+# installed_packages = get_installed_packages()
+# if installed_packages:
+#     for pkg in installed_packages:
+#         print(pkg)
+# else:
+#     print("Could not retrieve installed packages.")
 
-print("\n--- End Environment Details ---")
+# print("\n--- End Environment Details ---")
 
-try:
-    import dependencies
-    print(f"Module 'dependencies' found at: {dependencies.__file__}")
+# try:
+#     import dependencies
+#     print(f"Module 'dependencies' found at: {dependencies.__file__}")
 
-    # Optionally, list contents of the 'dependencies' directory if it's not zipped
-    # This might only work if it's extracted as a directory, not directly from a zip
-    if os.path.isdir(os.path.dirname(dependencies.__file__)):
-        print(f"Contents of 'dependencies' directory:")
-        for item in os.listdir(os.path.dirname(dependencies.__file__)):
-            print(f"  - {item}")
-except ImportError as e:
-    print(f"ERROR: Could not import 'dependencies': {e}")
+#     # Optionally, list contents of the 'dependencies' directory if it's not zipped
+#     # This might only work if it's extracted as a directory, not directly from a zip
+#     if os.path.isdir(os.path.dirname(dependencies.__file__)):
+#         print(f"Contents of 'dependencies' directory:")
+#         for item in os.listdir(os.path.dirname(dependencies.__file__)):
+#             print(f"  - {item}")
+# except ImportError as e:
+#     print(f"ERROR: Could not import 'dependencies': {e}")
 
 from dependencies.spark import start_spark
 from google.cloud import secretmanager
 
-def check_loaded_jars(spark):
-    """Prints the list of JARs loaded by the SparkContext."""
-    try:
-        # Access the underlying Java SparkContext
-        jsc = spark.sparkContext._jsc.sc()
-        java_jars = jsc.listJars() # This returns a Java Array object
+# def check_loaded_jars(spark):
+#     """Prints the list of JARs loaded by the SparkContext."""
+#     try:
+#         # Access the underlying Java SparkContext
+#         jsc = spark.sparkContext._jsc.sc()
+#         java_jars = jsc.listJars() # This returns a Java Array object
 
-        print("\n--- Spark Loaded JARs ---")
-        if java_jars:
-            # Iterate through the Java array to get the JAR paths
-            for i in range(java_jars.length()):
-                print(f"  - {java_jars.apply(i)}")
-        else:
-            print("  No additional JARs explicitly listed by SparkContext.listJars().")
-        print("---------------------------\n")
+#         print("\n--- Spark Loaded JARs ---")
+#         if java_jars:
+#             # Iterate through the Java array to get the JAR paths
+#             for i in range(java_jars.length()):
+#                 print(f"  - {java_jars.apply(i)}")
+#         else:
+#             print("  No additional JARs explicitly listed by SparkContext.listJars().")
+#         print("---------------------------\n")
 
-    except Exception as e:
-        print(f"ERROR checking loaded JARs: {e}")
+#     except Exception as e:
+#         print(f"ERROR checking loaded JARs: {e}")
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -109,7 +109,7 @@ def access_secrets(env, gcp_project_id, bq_dataset_name, bq_temp_gcs_bucket):
     elif env in ['stg', 'prod']:
         client = secretmanager.SecretManagerServiceClient()
         project_id = gcp_project_id
-        print(f"Accessing secrets for environment: {env} in project: {project_id}")
+        # print(f"Accessing secrets for environment: {env} in project: {project_id}")
 
         def get_secret(secret_id):
             name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
@@ -164,18 +164,18 @@ def main():
     #get all secrets
    
     secrets = access_secrets(env, gcp_project_id, bq_dataset_name, bq_temp_gcs_bucket)
-    print(secrets)
-    print("starting spark")
-    print(inspect.getsource(start_spark))
+    # print(secrets)
+    # print("starting spark")
+    # print(inspect.getsource(start_spark))
     spark, log = start_spark(secrets=secrets)
     log.info("starting spark done")
     check_loaded_jars(spark)
     log.info('Session Created, Starting ETL job')
     
     #Extract
-    log.info("------------EXTRACT STARTED----------")
+    log.info("------------EXTRACT STARTS----------")
     food_items_df, ordered_food_df, orders_df = extract_all_data(spark, log, env, secrets)
-    log.info("------------EXTRACT ENDED----------")
+    log.info("------------EXTRACT ENDS----------")
     
     #Transform
     log.info("------------TRANSFORM STARTED----------")
@@ -183,12 +183,12 @@ def main():
     order_data_filtered = column_filter(ordered_food_city,food_items_df, ordered_food_df) #fetching only required columns
     order_data_filtered = drop_nulls(order_data_filtered) #dropping nulls post join
     order_data_running_city = running_city(order_data_filtered) #calculating running bill_amount for each city with time and orders
-    log.info("------------TRANSFORM ENDED----------")
+    log.info("------------TRANSFORM ENDS----------")
 
     #Load
-    log.info("------------LOAD STARTED_---------")
+    log.info("------------BQ LOAD STARTED_---------")
     load_to_bq(order_data_running_city, log, secrets)    
-    log.info("------------LOAD ENDED----------")
+    log.info("------------BQ LOAD ENDS----------")
     return 
 
 def join_df(food_items_df, ordered_food_df, orders_df):
