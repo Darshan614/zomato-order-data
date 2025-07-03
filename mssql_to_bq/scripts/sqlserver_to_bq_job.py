@@ -7,8 +7,8 @@ import subprocess
 import inspect
 # from dependencies import spark
 # print(spark)
-os.system('')
-os.system('pip list')
+# os.system('')
+# os.system('pip list')
 
 # for path in sys.path:
 #     print(path)
@@ -169,7 +169,7 @@ def main():
     # print(inspect.getsource(start_spark))
     spark, log = start_spark(secrets=secrets)
     log.info("starting spark done")
-    check_loaded_jars(spark)
+    # check_loaded_jars(spark)
     log.info('Session Created, Starting ETL job')
     
     #Extract
@@ -236,14 +236,14 @@ def extract_all_data(spark, log, env, secrets):
 
     food_items_df = spark.read.jdbc(jdbc_url, 'food.AllFoodItems', properties=connection_properties)
     ordered_food_df = spark.read.jdbc(jdbc_url, 'ord.ordered_items', properties=connection_properties)
-    orders_df = spark.read.jdbc(jdbc_url, 'ord.zomato_orders', properties=connection_properties)
+    orders_df = spark.read.jdbc(jdbc_url, table='select * from ord.zomato_orders where CAST(OrderPlacedAt as DATE)=CAST(DATEADD(DAY, -1, SYSDATETIME()) as DATE)', properties=connection_properties)
 
-    food_tems_count = food_items_df.count()
+    food_items_count = food_items_df.count()
     ordered_food_count = ordered_food_df.count()
     orders_count = orders_df.count()
     
     log.info("---------DATA LOAD DONE -------------")
-    log.info(str(food_tems_count)+" rows loaded for food_items_df")
+    log.info(str(food_items_count)+" rows loaded for food_items_df")
     log.info(str(ordered_food_count)+" rows loaded for ordered_food_df")
     log.info(str(orders_count)+" rows loaded for orders_df")
 
