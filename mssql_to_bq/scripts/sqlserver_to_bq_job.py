@@ -236,7 +236,7 @@ def extract_all_data(spark, log, env, secrets):
 
     food_items_df = spark.read.jdbc(jdbc_url, 'food.AllFoodItems', properties=connection_properties)
     ordered_food_df = spark.read.jdbc(jdbc_url, 'ord.ordered_items', properties=connection_properties)
-    orders_df = spark.read.jdbc(jdbc_url, table='select * from ord.zomato_orders where CAST(OrderPlacedAt as DATE)=CAST(DATEADD(DAY, -1, SYSDATETIME()) as DATE)', properties=connection_properties)
+    orders_df = spark.read.jdbc(jdbc_url, table="(select * from ord.zomato_orders where CAST(OrderPlacedAt as DATE)=CAST(DATEADD(DAY, -1, SYSDATETIME()) as DATE)) as daily_orders", properties=connection_properties)
 
     food_items_count = food_items_df.count()
     ordered_food_count = ordered_food_df.count()
