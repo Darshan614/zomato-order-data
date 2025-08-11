@@ -71,6 +71,13 @@ jobs:
             echo "zip_needed=false" >> $GITHUB_ENV
           fi
 
+          if echo "$changed_files" | grep -qE '^df-avro-pq/'; then
+            echo "df_avro_pq_changed=true" >> $GITHUB_ENV
+            echo "df_avro_pq_files=$(echo "$changed_files" | grep '^df-avro-pq/')" >> $GITHUB_ENV
+          else
+            echo "df_avro_pq_changed=false" >> $GITHUB_ENV
+          fi
+
       - name: Zip dependencies
         if: env.zip_needed == 'true'
         run: |
@@ -88,4 +95,12 @@ jobs:
           else
             echo "🛑 No changes in dependencies/*.py — skipping zip upload"
           fi
+
+      - name: Upload df-avro-pq files to GCS
+        if: env.df_avro_pq_changed == 'true'
+        run: |
+          echo "✅ Uploading df-avro-pq files to GCS Bucket: df-avro-pq-bk"
+          for file in ${{ env.df_avro_pq_files }}; do
+            gsutil cp "$file" gs://df-avro-pq-bk/
+          done
 

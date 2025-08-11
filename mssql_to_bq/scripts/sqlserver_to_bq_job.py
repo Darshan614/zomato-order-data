@@ -5,72 +5,9 @@ from pyspark.sql.functions import col, expr, first, sum as Fsum, row_number
 from pyspark.sql.window import Window
 import subprocess
 import inspect
-# from dependencies import spark
-# print(spark)
-# os.system('')
-# os.system('pip list')
-
-# for path in sys.path:
-#     print(path)
-
-# print("\n--- Python Interpreter Path ---")
-# print(sys.executable)
-
-# def get_installed_packages():
-#     try:
-#         command = [sys.executable, "-m", "pip", "list", "--format", "freeze"]
-#         result = subprocess.run(command, capture_output=True, text=True, check=True)
-#         return result.stdout.splitlines()
-#     except subprocess.CalledProcessError as e:
-#         print(f"Error running pip list: {e}")
-#         print(f"STDOUT: {e.stdout}")
-#         print(f"STDERR: {e.stderr}")
-#         return []
-
-# print("\n--- Pip Installed Packages ---")
-# installed_packages = get_installed_packages()
-# if installed_packages:
-#     for pkg in installed_packages:
-#         print(pkg)
-# else:
-#     print("Could not retrieve installed packages.")
-
-# print("\n--- End Environment Details ---")
-
-# try:
-#     import dependencies
-#     print(f"Module 'dependencies' found at: {dependencies.__file__}")
-
-#     # Optionally, list contents of the 'dependencies' directory if it's not zipped
-#     # This might only work if it's extracted as a directory, not directly from a zip
-#     if os.path.isdir(os.path.dirname(dependencies.__file__)):
-#         print(f"Contents of 'dependencies' directory:")
-#         for item in os.listdir(os.path.dirname(dependencies.__file__)):
-#             print(f"  - {item}")
-# except ImportError as e:
-#     print(f"ERROR: Could not import 'dependencies': {e}")
-
 from dependencies.spark import start_spark
 from google.cloud import secretmanager
 
-# def check_loaded_jars(spark):
-#     """Prints the list of JARs loaded by the SparkContext."""
-#     try:
-#         # Access the underlying Java SparkContext
-#         jsc = spark.sparkContext._jsc.sc()
-#         java_jars = jsc.listJars() # This returns a Java Array object
-
-#         print("\n--- Spark Loaded JARs ---")
-#         if java_jars:
-#             # Iterate through the Java array to get the JAR paths
-#             for i in range(java_jars.length()):
-#                 print(f"  - {java_jars.apply(i)}")
-#         else:
-#             print("  No additional JARs explicitly listed by SparkContext.listJars().")
-#         print("---------------------------\n")
-
-#     except Exception as e:
-#         print(f"ERROR checking loaded JARs: {e}")
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -109,7 +46,6 @@ def access_secrets(env, gcp_project_id, bq_dataset_name, bq_temp_gcs_bucket):
     elif env in ['stg', 'prod']:
         client = secretmanager.SecretManagerServiceClient()
         project_id = gcp_project_id
-        # print(f"Accessing secrets for environment: {env} in project: {project_id}")
 
         def get_secret(secret_id):
             name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
@@ -132,9 +68,8 @@ def get_db_config(env, secrets=None):
     if secrets is None:
         secrets = access_secrets(env)
     jdbc_url = f"jdbc:sqlserver://127.0.0.1:1433;databaseName={secrets['database']};encrypt=false;trustServerCertificate=true"
-    # jdbc_url = f"jdbc:sqlserver://127.0.0.1:1433;databaseName={secrets['database']}"
 
-    connection_properties = {
+    connection_properties = {   
         "user": secrets["user"],
         "password": secrets["password"],
         "driver": "com.microsoft.sqlserver.jdbc.SQLServerDriver"
@@ -142,7 +77,6 @@ def get_db_config(env, secrets=None):
     return jdbc_url, connection_properties
 
 def check_db_connection(spark,log, env, secrets):
-
     jdbc_url, connection_properties = get_db_config(env, secrets)
     log.info("Connecting to database...")
     log.info(f"JDBC URL: {jdbc_url}")
@@ -164,9 +98,6 @@ def main():
     #get all secrets
    
     secrets = access_secrets(env, gcp_project_id, bq_dataset_name, bq_temp_gcs_bucket)
-    # print(secrets)
-    # print("starting spark")
-    # print(inspect.getsource(start_spark))
     spark, log = start_spark(secrets=secrets)
     log.info("starting spark done")
     # check_loaded_jars(spark)
