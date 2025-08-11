@@ -61,7 +61,7 @@ with DAG(
             "temp_location": TEMP_LOCATION,
             # Pass the JSON string to your Python script via its argparse parameter
             "tables_config_json": tables_config_json,
-            # Also explicitly pass project and region to the Python script as it expects them
+            # Also explicitly pass project and region to the Python script it expects them
             "project": PROJECT_ID,
             "region": REGION,
         },

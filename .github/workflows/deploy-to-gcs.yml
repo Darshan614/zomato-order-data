@@ -80,9 +80,9 @@ jobs:
           fi
 
           # Check for zomato-composer DAG changes
-          if echo "$changed_files" | grep -qE '^zomato-composer/'; then
+          if echo "$changed_files" | grep -qE 'mssql_to_bq/scripts/zomato-composer/'; then
             echo "composer_dag_changed=true" >> $GITHUB_ENV
-            echo "composer_dag_files=$(echo "$changed_files" | grep '^zomato-composer/')" >> $GITHUB_ENV
+            echo "composer_dag_files=$(echo "$changed_files" | grep 'mssql_to_bq/scripts/zomato-composer/')" >> $GITHUB_ENV
           else
             echo "composer_dag_changed=false" >> $GITHUB_ENV
           fi
