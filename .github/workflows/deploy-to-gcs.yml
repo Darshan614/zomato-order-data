@@ -32,14 +32,12 @@ jobs:
         run: |
           echo "GCP_PROJECT=${{ secrets.GCP_PROJECT_STG }}" >> $GITHUB_ENV
           echo "GCS_BUCKET=${{ secrets.GCS_BUCKET_STG }}" >> $GITHUB_ENV
-
         if: env.ENV == 'STG'
 
       - name: Export dynamic secrets to ENV
         run: |
           echo "GCP_PROJECT=${{ secrets.GCP_PROJECT_PROD }}" >> $GITHUB_ENV
           echo "GCS_BUCKET=${{ secrets.GCS_BUCKET_PROD }}" >> $GITHUB_ENV
-
         if: env.ENV == 'PROD'
 
       - name: Authenticate to GCP (STG)
@@ -65,17 +63,28 @@ jobs:
           git fetch origin ${{ github.event.before }}
           changed_files=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
           echo "🔍 Changed files: $changed_files"
+          
+          # Check for dependency changes
           if echo "$changed_files" | grep -qE 'mssql_to_bq/scripts/dependencies/(logging|spark)\.py'; then
             echo "zip_needed=true" >> $GITHUB_ENV
           else
             echo "zip_needed=false" >> $GITHUB_ENV
           fi
 
-          if echo "$changed_files" | grep -qE '^df-avro-pq/'; then
+          # Check for df-avro-pq changes
+          if echo "$changed_files" | grep -qE '^mssql_to_bq/scripts/df-avro-pq/'; then
             echo "df_avro_pq_changed=true" >> $GITHUB_ENV
-            echo "df_avro_pq_files=$(echo "$changed_files" | grep '^df-avro-pq/')" >> $GITHUB_ENV
+            echo "df_avro_pq_files=$(echo "$changed_files" | grep '^mssql_to_bq/scripts/df-avro-pq/')" >> $GITHUB_ENV
           else
             echo "df_avro_pq_changed=false" >> $GITHUB_ENV
+          fi
+
+          # Check for zomato-composer DAG changes
+          if echo "$changed_files" | grep -qE '^zomato-composer/'; then
+            echo "composer_dag_changed=true" >> $GITHUB_ENV
+            echo "composer_dag_files=$(echo "$changed_files" | grep '^zomato-composer/')" >> $GITHUB_ENV
+          else
+            echo "composer_dag_changed=false" >> $GITHUB_ENV
           fi
 
       - name: Zip dependencies
@@ -104,3 +113,10 @@ jobs:
             gsutil cp "$file" gs://df-avro-pq-bk/
           done
 
+      - name: Upload Composer DAGs to Composer bucket
+        if: env.composer_dag_changed == 'true'
+        run: |
+          echo "✅ Uploading Airflow DAG files to Composer Bucket"
+          for file in ${{ env.composer_dag_files }}; do
+            gsutil cp "$file" gs://us-central1-zomato-comp-env-66d048dc-bucket/dags/
+          done

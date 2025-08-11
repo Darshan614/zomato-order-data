@@ -114,7 +114,7 @@ def run_pipeline(tables_config_json, temp_location, project_id, region, pipeline
     _LOGGER.info("Dataflow pipeline finished for all tables.")
 
 
-# --- Main Execution Block ---
+# --- Main Execution Block --
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Apache Beam pipeline to convert Avro to Parquet for multiple tables.")
     # Arguments expected from DataflowStartPythonJobOperator's 'options'
