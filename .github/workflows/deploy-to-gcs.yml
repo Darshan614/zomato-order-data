@@ -71,10 +71,11 @@ jobs:
             echo "zip_needed=false" >> $GITHUB_ENV
           fi
 
-          # Check for df-avro-pq changes
+          # Check for df-avro-pq changes and convert newlines to spaces
           if echo "$changed_files" | grep -qE '^mssql_to_bq/scripts/df-avro-pq/'; then
             echo "df_avro_pq_changed=true" >> $GITHUB_ENV
-            echo "df_avro_pq_files=$(echo "$changed_files" | grep '^mssql_to_bq/scripts/df-avro-pq/')" >> $GITHUB_ENV
+            df_avro_pq_files=$(echo "$changed_files" | grep '^mssql_to_bq/scripts/df-avro-pq/' | tr '\n' ' ')
+            echo "df_avro_pq_files=$df_avro_pq_files" >> $GITHUB_ENV
           else
             echo "df_avro_pq_changed=false" >> $GITHUB_ENV
           fi
@@ -82,7 +83,8 @@ jobs:
           # Check for zomato-composer DAG changes
           if echo "$changed_files" | grep -qE 'mssql_to_bq/scripts/zomato-composer/'; then
             echo "composer_dag_changed=true" >> $GITHUB_ENV
-            echo "composer_dag_files=$(echo "$changed_files" | grep 'mssql_to_bq/scripts/zomato-composer/')" >> $GITHUB_ENV
+            composer_dag_files=$(echo "$changed_files" | grep 'mssql_to_bq/scripts/zomato-composer/' | tr '\n' ' ')
+            echo "composer_dag_files=$composer_dag_files" >> $GITHUB_ENV
           else
             echo "composer_dag_changed=false" >> $GITHUB_ENV
           fi
