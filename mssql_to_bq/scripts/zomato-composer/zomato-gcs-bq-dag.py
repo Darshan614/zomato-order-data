@@ -77,7 +77,7 @@ with DAG(
             task_id=f"avro_to_parquet_{table_name}",
             body={
                 "launchParameter": {
-                    "jobName": f"{table_name}-avro-pq-del",
+                    "jobName": f"{table_name.replace('_', '-')}-avro-pq-del",
                     "containerSpecGcsPath": "gs://dataflow-templates-asia-south2/latest/flex/File_Format_Conversion",
                     "parameters": {
                         "inputFileFormat": "avro",
