@@ -165,18 +165,21 @@ def extract_all_data(spark, log, env, secrets):
     check_db_connection(spark, log, env, secrets)
     jdbc_url, connection_properties = get_db_config(env, secrets)
 
+    # Read food items from JDBC
     food_items_df = spark.read.jdbc(jdbc_url, 'food.AllFoodItems', properties=connection_properties)
-    ordered_food_df = spark.read.jdbc(jdbc_url, 'ord.ordered_items', properties=connection_properties)
-    orders_df = spark.read.jdbc(jdbc_url, table="(select * from ord.zomato_orders where CAST(OrderPlacedAt as DATE)=CAST(DATEADD(DAY, -1, SYSDATETIME()) as DATE)) as daily_orders", properties=connection_properties)
+
+    # Read parquet files from GCS instead of JDBC for these two tables
+    ordered_food_df = spark.read.parquet("gs://zomato-parquet-dump/ord_ordered_items/*")
+    orders_df = spark.read.parquet("gs://zomato-parquet-dump/ord_zomato_orders/*")
 
     food_items_count = food_items_df.count()
     ordered_food_count = ordered_food_df.count()
     orders_count = orders_df.count()
     
     log.info("---------DATA LOAD DONE -------------")
-    log.info(str(food_items_count)+" rows loaded for food_items_df")
-    log.info(str(ordered_food_count)+" rows loaded for ordered_food_df")
-    log.info(str(orders_count)+" rows loaded for orders_df")
+    log.info(f"{food_items_count} rows loaded for food_items_df")
+    log.info(f"{ordered_food_count} rows loaded for ordered_food_df")
+    log.info(f"{orders_count} rows loaded for orders_df")
 
     return food_items_df, ordered_food_df, orders_df
 

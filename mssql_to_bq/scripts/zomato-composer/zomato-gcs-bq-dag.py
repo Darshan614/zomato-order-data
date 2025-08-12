@@ -54,7 +54,7 @@ def move_files_to_archive(gcs_pattern, **kwargs):
         # Skip files directly under the prefix folder to retain the folder itself (like dump/ord_zomato_orders/file.avro)
         if "/" not in relative_path:
             continue
-        
+
         table_folder = prefix.split("/")[-1]  # 'ord_zomato_orders'
         # Compose the path inside archive with table folder included
         dest_blob_name = f"archive/{table_folder}/{relative_path}"
@@ -119,11 +119,11 @@ with DAG(
         precheck >> dataflow_task >> move_to_archive
         move_tasks.append(move_to_archive)
 
-    final_email = EmailOperator(
-        task_id="send_completion_email",
-        to="jaindarshan849@gmail.com",
-        subject="Zomato Avro to Parquet DAG Completed",
-        html_content="<p>The Zomato Avro to Parquet dataflow processing DAG has completed successfully.</p>",
-    )
+    # final_email = EmailOperator(
+    #     task_id="send_completion_email",
+    #     to="jaindarshan849@gmail.com",
+    #     subject="Zomato Avro to Parquet DAG Completed",
+    #     html_content="<p>The Zomato Avro to Parquet dataflow processing DAG has completed successfully.</p>",
+    # )
 
-    move_tasks >> final_email
+    # move_tasks >> final_email
