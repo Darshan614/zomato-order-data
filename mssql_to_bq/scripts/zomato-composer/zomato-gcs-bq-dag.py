@@ -40,7 +40,7 @@ def check_gcs_files(gcs_pattern, **kwargs):
         raise AirflowSkipException(f"No files found for {gcs_pattern}")
 
 def move_files_to_archive(gcs_pattern, **kwargs):
-    """Move all avro files matching pattern to archive folder."""
+    """Move all avro files matching pattern to archive folder"""
     bucket_name = gcs_pattern.split("/")[2]
     prefix = "/".join(gcs_pattern.split("/")[3:]).replace("**/*.avro", "")
     
