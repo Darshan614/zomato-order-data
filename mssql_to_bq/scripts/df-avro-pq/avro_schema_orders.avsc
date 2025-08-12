@@ -1,0 +1,44 @@
+{
+  "type": "record",
+  "name": "ord_zomato_orders",
+  "fields": [
+    {
+      "name": "City",
+      "type": ["null", "string"],
+      "default": null
+    },
+    {
+      "name": "OrderID",
+      "type": ["null", "int"],
+      "default": null
+    },
+    {
+      "name": "OrderPlacedAt",
+      "type": ["null", {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }],
+      "default": null
+    },
+    {
+      "name": "billAmount",
+      "type": ["null", "int"],
+      "default": null
+    },
+    {
+      "name": "RiderWaitTime",
+      "type": ["null", "double"],
+      "default": null
+    },
+    {
+      "name": "KPTDuration",
+      "type": ["null", "double"],
+      "default": null
+    },
+    {
+      "name": "TotalDuration",
+      "type": ["null", "double"],
+      "default": null
+    }
+  ]
+}

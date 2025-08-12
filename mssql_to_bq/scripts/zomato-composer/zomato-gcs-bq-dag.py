@@ -1,77 +1,119 @@
 from airflow import DAG
-from airflow.models import Variable
-from airflow.providers.google.cloud.operators.dataflow import DataflowStartPythonJobOperator
-from datetime import datetime, timedelta
+from airflow.operators.python import PythonOperator
+from airflow.operators.email import EmailOperator
+from airflow.exceptions import AirflowSkipException
+from airflow.providers.google.cloud.operators.dataflow import DataflowStartFlexTemplateOperator
+from google.cloud import storage
+from airflow.utils.dates import days_ago
 
-# --- DAG Configuration ---
-# Your Google Cloud project ID
-PROJECT_ID = "zomato-stg"  # CHANGE THIS!
-# The GCP region where Dataflow jobs will run
-REGION = "us-central1"            # CHANGE THIS!
-# GCS path for Dataflow's temporary and staging files
-TEMP_LOCATION = "gs://df-avro-pq-bk/temp"  # CHANGE THIS!
-# GCS path where your 'avro_to_parquet.py' script and 'requirements.txt' are uploaded
-GCS_PYTHON_SCRIPT_LOCATION = "gs://df-avro-pq-bk/df_avro_parquet.py" # CHANGE THIS!
-# GCS path to your requirements.txt if your Python script has custom dependencies
-# GCS_REQUIREMENTS_FILE = "gs://df-avro-pq-gcs/requirements.txt" # CHANGE THIS! (or set to None if not needed)
+PROJECT_ID = "zomato-stg"
+REGION = "asia-south2"
 
-# Airflow Variable Key for your table schemas JSON
-TABLES_CONFIG_VARIABLE_KEY = "tables_config_json" # Ensure this matches your Airflow Variable name
+# GCS locations and schema paths for both tables
+TABLES = {
+    "ord_zomato_orders": {
+        "gcs_pattern": "gs://zomato-oltp-avro-dump/dump/ord_zomato_orders/**/*.avro",
+        "schema": "gs://df-avro-pq-bk/avro_schema_orders.avsc"
+    },
+    "ord_ordered_items": {
+        "gcs_pattern": "gs://zomato-oltp-avro-dump/dump/ord_ordered_items/**/*.avro",
+        "schema": "gs://df-avro-pq-bk/avro_schema_items.avsc"
+    }
+}
+
+ARCHIVE_PATH = "gs://zomato-oltp-avro-dump/archive"
+
+def check_gcs_files(gcs_pattern, **kwargs):
+    bucket_name = gcs_pattern.split("/")[2]
+    prefix = "/".join(gcs_pattern.split("/")[3:]).replace("**/*.avro", "")
+
+    storage_client = storage.Client()
+    blobs = list(storage_client.list_blobs(bucket_name, prefix=prefix))
+
+    if not blobs:
+        EmailOperator(
+            task_id=f'email_no_files_{prefix.replace("/", "_")}',
+            to="jaindarshan849@gmail.com",
+            subject="No AVRO files found for processing",
+            html_content=f"<p>No AVRO files found in path: {gcs_pattern}</p>"
+        ).execute(context=kwargs)
+        raise AirflowSkipException(f"No files found for {gcs_pattern}")
+
+def move_files_to_archive(gcs_pattern, **kwargs):
+    """Move all avro files matching pattern to archive folder."""
+    bucket_name = gcs_pattern.split("/")[2]
+    prefix = "/".join(gcs_pattern.split("/")[3:]).replace("**/*.avro", "")
+    
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    blobs = list(storage_client.list_blobs(bucket_name, prefix=prefix))
+    
+    for blob in blobs:
+        dest_blob_name = f"archive/{blob.name.split('/')[-1]}"
+        bucket.rename_blob(blob, dest_blob_name)
 
 with DAG(
-    dag_id='avro_to_parquet_dataflow_daily',
-    start_date=datetime(2025, 8, 11),
-    # Set your desired schedule interval (e.g., daily, hourly, or a specific cron)
-    # '@daily' means it runs once a day at the beginning of the day (midnight UTC)
-    # For 2 AM UTC, use '0 2 * * *'
-    schedule_interval='@daily',
-    catchup=False, # Set to True if you want to run for past missed schedules
-    tags=['data_pipeline', 'etl', 'dataflow', 'parquet'],
-    default_args={
-        'owner': 'airflow',
-        'depends_on_past': False,
-        'email_on_failure': False,
-        'email_on_retry': False,
-        'retries': 1,
-        'retry_delay': timedelta(minutes=5),
-    },
+    dag_id="zomato_avro_to_parquet",
+    schedule_interval=None,
+    start_date=days_ago(1),
+    catchup=False,
+    tags=["zomato", "dataflow", "avro-parquet"],
 ) as dag:
-    # --- Step 1: Fetch tables configuration from Airflow Variable ---
-    # This step is implicit as Variable.get is called directly in the operator options.
-    # We call it here just to demonstrate its retrieval.
-    try:
-        tables_config_json = Variable.get(TABLES_CONFIG_VARIABLE_KEY, deserialize_json=False)
-        # You can add a log here if needed for debugging in Airflow logs
-        # print(f"Fetched tables_config_json from Airflow Variable: {tables_config_json[:100]}...")
-    except KeyError:
-        raise ValueError(f"Airflow Variable '{TABLES_CONFIG_VARIABLE_KEY}' not found. Please create it.")
-    except Exception as e:
-        raise ValueError(f"Error fetching Airflow Variable '{TABLES_CONFIG_VARIABLE_KEY}': {e}")
 
+    move_tasks = []
 
-    # --- Step 2: Start the Dataflow Job ---
-    start_avro_to_parquet_job = DataflowStartPythonJobOperator(
-        task_id="run_avro_to_parquet_dataflow_job",
-        py_file=GCS_PYTHON_SCRIPT_LOCATION, # Path to your Beam Python script in GCS
-        project_id=PROJECT_ID,
-        location=REGION, # Dataflow job region
-        # Dataflow job name (use Airflow macros for dynamic naming, e.g., ds_nodash for date)
-        job_name=f"avro-to-parquet-{dag.dag_id}-{datetime.now().strftime('%Y%m%d%H%M%S')}",
-        options={
-            "temp_location": TEMP_LOCATION,
-            # Pass the JSON string to your Python script via its argparse parameter
-            "tables_config_json": tables_config_json,
-            # Also explicitly pass project and region to the Python script it expects them
-            "project": PROJECT_ID,
-            "region": REGION,
-        },
-        # If your Python script requires custom libraries defined in requirements.txt
-        # make sure this file is also in GCS and accessible.
-        requirements_file=GCS_REQUIREMENTS_FILE if GCS_REQUIREMENTS_FILE else None,
-        # Default options for the Dataflow job runner (e.g., staging location)
-        dataflow_default_options={
-            "runner": "DataflowRunner",
-            "staging_location": f"{TEMP_LOCATION}/staging"
-        }
+    for table_name, config in TABLES.items():
+        gcs_pattern = config["gcs_pattern"]
+        schema_path = config["schema"]
+
+        precheck = PythonOperator(
+            task_id=f"check_files_{table_name}",
+            python_callable=check_gcs_files,
+            op_kwargs={"gcs_pattern": gcs_pattern},
+            provide_context=True
+        )
+
+        dataflow_task = DataflowStartFlexTemplateOperator(
+            task_id=f"avro_to_parquet_{table_name}",
+            body={
+                "launchParameter": {
+                    "jobName": f"{table_name}-avro-pq-del",
+                    "containerSpecGcsPath": "gs://dataflow-templates-asia-south2/latest/flex/File_Format_Conversion",
+                    "parameters": {
+                        "inputFileFormat": "avro",
+                        "outputFileFormat": "parquet",
+                        "inputFileSpec": gcs_pattern,
+                        "containsHeaders": "false",
+                        "csvFormat": "Default",
+                        "largeNumFiles": "false",
+                        "csvFileEncoding": "UTF-8",
+                        "logDetailedCsvConversionErrors": "false",
+                        "outputBucket": f"gs://zomato-parquet-dump/{table_name}",
+                        "schema": schema_path,
+                        "numShards": "0",
+                        "outputFilePrefix": "output",
+                    },
+                }
+            },
+            location=REGION,
+            project_id=PROJECT_ID,
+        )
+
+        move_to_archive = PythonOperator(
+            task_id=f"move_to_archive_{table_name}",
+            python_callable=move_files_to_archive,
+            op_kwargs={"gcs_pattern": gcs_pattern},
+            provide_context=True
+        )
+
+        precheck >> dataflow_task >> move_to_archive
+        move_tasks.append(move_to_archive)
+
+    final_email = EmailOperator(
+        task_id="send_completion_email",
+        to="jaindarshan849@gmail.com",
+        subject="Zomato Avro to Parquet DAG Completed",
+        html_content="<p>The Zomato Avro to Parquet dataflow processing DAG has completed successfully.</p>",
     )
 
+    move_tasks >> final_email

@@ -1,0 +1,21 @@
+{
+  "namespace": "ord",
+  "type": "record",
+  "name": "ordered_items",
+  "fields": [
+    {
+      "name": "OrderID",
+      "type": "int"
+    },
+    {
+      "name": "ItemID",
+      "type": ["null", "int"],
+      "default": null
+    },
+    {
+      "name": "Quantity",
+      "type": ["null", "int"],
+      "default": null
+    }
+  ]
+}
