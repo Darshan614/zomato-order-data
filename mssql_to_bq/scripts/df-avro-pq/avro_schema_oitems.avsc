@@ -1,20 +1,85 @@
 {
-  "type": "record",
-  "name": "ord_ordered_items",
-  "fields": [
-    {
-      "name": "order_id",
-      "type": "int"
-    },
-    {
-      "name": "item_id",
-      "type": ["null","int"],
-      "default": null
-    },
-    {
-      "name": "quantity",
-      "type": ["null","int"],
-      "default": null
+  "type" : "record",
+  "name" : "ord_ordered_items",
+  "fields" : [ {
+    "name" : "uuid",
+    "type" : "string"
+  }, {
+    "name" : "read_timestamp",
+    "type" : {
+      "type" : "long",
+      "logicalType" : "timestamp-millis"
     }
-  ]
+  }, {
+    "name" : "source_timestamp",
+    "type" : {
+      "type" : "long",
+      "logicalType" : "timestamp-millis"
+    }
+  }, {
+    "name" : "object",
+    "type" : "string"
+  }, {
+    "name" : "read_method",
+    "type" : "string"
+  }, {
+    "name" : "stream_name",
+    "type" : "string"
+  }, {
+    "name" : "schema_key",
+    "type" : "string"
+  }, {
+    "name" : "sort_keys",
+    "type" : {
+      "type" : "array",
+      "items" : [ "string", "long" ]
+    }
+  }, {
+    "name" : "source_metadata",
+    "type" : {
+      "type" : "record",
+      "name" : "source_metadata",
+      "fields" : [ {
+        "name" : "schema",
+        "type" : "string"
+      }, {
+        "name" : "table",
+        "type" : "string"
+      }, {
+        "name" : "is_deleted",
+        "type" : [ "null", "boolean" ]
+      }, {
+        "name" : "change_type",
+        "type" : [ "null", "string" ]
+      }, {
+        "name" : "tx_id",
+        "type" : [ "null", "long" ]
+      }, {
+        "name" : "lsn",
+        "type" : [ "null", "string" ]
+      }, {
+        "name" : "primary_keys",
+        "type" : [ "null", {
+          "type" : "array",
+          "items" : "string"
+        } ]
+      } ]
+    }
+  }, {
+    "name" : "payload",
+    "type" : {
+      "type" : "record",
+      "name" : "payload",
+      "fields" : [ {
+        "name" : "order_id",
+        "type" : [ "null", "int" ]
+      }, {
+        "name" : "item_id",
+        "type" : [ "null", "int" ]
+      }, {
+        "name" : "quantity",
+        "type" : [ "null", "int" ]
+      } ]
+    }
+  } ]
 }
