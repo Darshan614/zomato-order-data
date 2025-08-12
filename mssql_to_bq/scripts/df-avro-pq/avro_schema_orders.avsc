@@ -9,7 +9,7 @@
     },
     {
       "name": "OrderID",
-      "type": ["null", "int"],
+      "type": ["null","int"],
       "default": null
     },
     {

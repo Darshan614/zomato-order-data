@@ -9,12 +9,12 @@
     },
     {
       "name": "ItemID",
-      "type": ["null", "int"],
+      "type": ["null","int"],
       "default": null
     },
     {
       "name": "Quantity",
-      "type": ["null", "int"],
+      "type": ["null","int"],
       "default": null
     }
   ]
