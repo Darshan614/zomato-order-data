@@ -17,7 +17,7 @@ TABLES = {
     },
     "ord_ordered_items": {
         "gcs_pattern": "gs://zomato-oltp-avro-dump/dump/ord_ordered_items/**/*.avro",
-        "schema": "gs://df-avro-pq-bk/avro_schema_items.avsc"
+        "schema": "gs://df-avro-pq-bk/avro_schema_oitems.avsc"
     }
 }
 
@@ -40,17 +40,27 @@ def check_gcs_files(gcs_pattern, **kwargs):
         raise AirflowSkipException(f"No files found for {gcs_pattern}")
 
 def move_files_to_archive(gcs_pattern, **kwargs):
-    """Move all avro files matching pattern to archive folder"""
     bucket_name = gcs_pattern.split("/")[2]
-    prefix = "/".join(gcs_pattern.split("/")[3:]).replace("**/*.avro", "")
-    
+    prefix = "/".join(gcs_pattern.split("/")[3:]).replace("**/*.avro", "")  # e.g. dump/ord_zomato_orders/
+
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
     blobs = list(storage_client.list_blobs(bucket_name, prefix=prefix))
-    
+
     for blob in blobs:
-        dest_blob_name = f"archive/{blob.name.split('/')[-1]}"
+        # Get relative path inside the prefix folder (e.g. ord_zomato_orders/2025/08/11/file.avro)
+        relative_path = blob.name[len(prefix):].lstrip("/")
+
+        # Skip files directly under the prefix folder to retain the folder itself (like dump/ord_zomato_orders/file.avro)
+        if "/" not in relative_path:
+            continue
+        
+        table_folder = prefix.split("/")[-1]  # 'ord_zomato_orders'
+        # Compose the path inside archive with table folder included
+        dest_blob_name = f"archive/{table_folder}/{relative_path}"
+
         bucket.rename_blob(blob, dest_blob_name)
+
 
 with DAG(
     dag_id="zomato_avro_to_parquet",
