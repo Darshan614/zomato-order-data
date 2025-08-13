@@ -125,12 +125,6 @@ with DAG(
             provide_context=True
         )
 
-        trigger_spark = TriggerDagRunOperator(
-            task_id="trigger_spark_dag",
-            trigger_dag_id="dataproc_pyspark_pipeline",
-            wait_for_completion=False
-        )
-
         precheck >> dataflow_task >> move_to_archive
         move_tasks.append(move_to_archive)
 
@@ -140,5 +134,11 @@ with DAG(
     #     subject="Zomato Avro to Parquet DAG Completed",
     #     html_content="<p>The Zomato Avro to Parquet dataflow processing DAG has completed successfully.</p>",
     # )
+
+    trigger_spark = TriggerDagRunOperator(
+        task_id="trigger_spark_dag",
+        trigger_dag_id="dataproc_pyspark_pipeline",
+        wait_for_completion=False
+    )
 
     move_tasks >> trigger_spark
