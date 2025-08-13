@@ -100,11 +100,11 @@ jobs:
       - name: Upload PySpark job and zipped dependencies
         run: |
           echo "✅ Uploading to GCS Bucket: $GCS_BUCKET"
-          gsutil -m cp mssql_to_bq/scripts/sqlserver_to_bq_job.py gs://${{ env.GCS_BUCKET }}/pyspark/
+          gsutil -m cp mssql_to_bq/scripts/zomato-spark-gcs-bq.py gs://${{ env.GCS_BUCKET }}/pyspark/
           if [[ "${{ env.zip_needed }}" == "true" ]]; then
             gsutil cp mssql_to_bq/scripts/dependencies.zip gs://${{ env.GCS_BUCKET }}/pyspark/
           else
-            echo "🛑 No changes in dependencies/*.py — skipping zip upload"
+            echo "🛑 No changes in spark and dependencies/*.py — skipping zip upload"
           fi
 
       - name: Upload df-avro-pq files to GCS

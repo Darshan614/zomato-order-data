@@ -33,8 +33,8 @@ with DAG(
 
     trigger_zomato = TriggerDagRunOperator(
         task_id="trigger_zomato_avro_to_parquet",
-        trigger_dag_id="zomato_avro_to_parquet",  # the other DAG's ID
-        wait_for_completion=False  # set True if you want to wait
+        trigger_dag_id="zomato_avro_to_parquet",
+        wait_for_completion=False
     )
 
     extract >> upload >> trigger_zomato

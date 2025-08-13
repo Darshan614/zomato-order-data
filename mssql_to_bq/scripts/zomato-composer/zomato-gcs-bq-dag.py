@@ -5,9 +5,16 @@ from airflow.exceptions import AirflowSkipException
 from airflow.providers.google.cloud.operators.dataflow import DataflowStartFlexTemplateOperator
 from google.cloud import storage
 from airflow.utils.dates import days_ago
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from datetime import datetime, timedelta
 
 PROJECT_ID = "zomato-stg"
 REGION = "asia-south2"
+
+def get_previous_date_prefix():
+    """Returns previous date in YYYY/MM/DD format for GCS folder filtering."""
+    prev_date = datetime.utcnow() - timedelta(days=1)
+    return prev_date.strftime("%Y/%m/%d")  # e.g., 2025/08/12
 
 # GCS locations and schema paths for both tables
 TABLES = {
@@ -25,7 +32,8 @@ ARCHIVE_PATH = "gs://zomato-oltp-avro-dump/archive"
 
 def check_gcs_files(gcs_pattern, **kwargs):
     bucket_name = gcs_pattern.split("/")[2]
-    prefix = "/".join(gcs_pattern.split("/")[3:]).replace("**/*.avro", "")
+    date_prefix = get_previous_date_prefix()
+    prefix = "/".join(gcs_pattern.split("/")[3:]).replace("**/*.avro", f"{date_prefix}/")
 
     storage_client = storage.Client()
     blobs = list(storage_client.list_blobs(bucket_name, prefix=prefix))
@@ -41,7 +49,8 @@ def check_gcs_files(gcs_pattern, **kwargs):
 
 def move_files_to_archive(gcs_pattern, **kwargs):
     bucket_name = gcs_pattern.split("/")[2]
-    prefix = "/".join(gcs_pattern.split("/")[3:]).replace("**/*.avro", "")  # e.g. dump/ord_zomato_orders/
+    date_prefix = get_previous_date_prefix()
+    prefix = "/".join(gcs_pattern.split("/")[3:]).replace("**/*.avro", f"{date_prefix}/")
 
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
@@ -57,7 +66,7 @@ def move_files_to_archive(gcs_pattern, **kwargs):
 
         table_folder = prefix.split("/")[-1]  # 'ord_zomato_orders'
         # Compose the path inside archive with table folder included
-        dest_blob_name = f"archive/{table_folder}/{relative_path}"
+        dest_blob_name = f"archive/{table_folder}/{date_prefix}/{relative_path}"
 
         bucket.rename_blob(blob, dest_blob_name)
 
@@ -92,7 +101,7 @@ with DAG(
                     "parameters": {
                         "inputFileFormat": "avro",
                         "outputFileFormat": "parquet",
-                        "inputFileSpec": gcs_pattern,
+                        "inputFileSpec": gcs_pattern.replace("**/*.avro", f"{get_previous_date_prefix()}/*.avro"),
                         "containsHeaders": "false",
                         "csvFormat": "Default",
                         "largeNumFiles": "false",
@@ -116,6 +125,12 @@ with DAG(
             provide_context=True
         )
 
+        trigger_spark = TriggerDagRunOperator(
+            task_id="trigger_spark_dag",
+            trigger_id="dataproc_pyspark_pipeline",
+            wait_for_completion=False
+        )
+
         precheck >> dataflow_task >> move_to_archive
         move_tasks.append(move_to_archive)
 
@@ -126,4 +141,4 @@ with DAG(
     #     html_content="<p>The Zomato Avro to Parquet dataflow processing DAG has completed successfully.</p>",
     # )
 
-    # move_tasks >> final_email
+    move_tasks >> trigger_spark

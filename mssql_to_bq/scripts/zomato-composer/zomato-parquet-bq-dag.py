@@ -5,6 +5,8 @@ from airflow.providers.google.cloud.operators.dataproc import (
     DataprocDeleteClusterOperator
 )
 from airflow.utils.dates import days_ago
+from airflow.operators.python import PythonOperator
+from google.cloud import storage
 
 # DAG args
 default_args = {
@@ -15,21 +17,21 @@ default_args = {
 
 PROJECT_ID = "zomato-stg"
 REGION = "asia-south1"
-CLUSTER_NAME = "my-zomato-dataproc-cluster"
+CLUSTER_NAME = "my-zomato-dataproc-cluster-new"
 
 PYSPARK_JOB = {
     "reference": {"job_id": "sqlserver_to_bq_job"},
     "placement": {"cluster_name": CLUSTER_NAME},
     "pyspark_job": {
-        "main_python_file_uri": "gs://zomato-bucket-stg/pyspark/sqlserver_to_bq_job.py",
+        "main_python_file_uri": "gs://zomato-bucket-stg/pyspark/zomato-spark-gcs-bq.py",
         "jar_file_uris": [
             "gs://zomato-bucket-stg/pyspark/jars/mssql-jdbc-12.10.1.jre11.jar",
             "gs://zomato-bucket-stg/pyspark/jars/gcs-connector-hadoop3-latest.jar"
         ],
-        "archives": [
+        "archive_uris": [
             "gs://zomato-bucket-stg/pyspark/temp_dataproc_venv_archive.zip#temp_dataproc_venv"
         ],
-        "py_files": [
+        "python_file_uris": [
             "gs://zomato-bucket-stg/pyspark/dependencies.zip"
         ],
         "properties": {
@@ -65,7 +67,7 @@ CLUSTER_CONFIG = {
         "image_version": "2.1-debian11",
         "properties": {
             "dataproc:pip.packages": "google-cloud-secret-manager==2.24.0",
-            "dataproc.conscrypt.provider.enable": "false",
+            "dataproc:conscrypt.provider.enable": "false", 
             "spark:spark.jars": ",".join([
                 "gs://zomato-bucket-stg/pyspark/jars/mssql-jdbc-12.10.1.jre11.jar",
                 "gs://zomato-bucket-stg/pyspark/jars/spark-3.5-bigquery-0.35.0.jar",
@@ -76,11 +78,30 @@ CLUSTER_CONFIG = {
     },
     "gce_cluster_config": {
         "service_account": "cloudsql-proxy-sa@zomato-stg.iam.gserviceaccount.com",
-        "scopes": ["https://www.googleapis.com/auth/cloud-platform"],
-        "metadata": {"PIP_PACKAGES_PROP": "google-cloud-secret-manager==2.24.0"},
-        "initialization_actions": ["gs://zomato-bucket-stg/init-actions/cloudsql-proxy-init.sh"]
-    }
+        "metadata": {"PIP_PACKAGES_PROP": "google-cloud-secret-manager==2.24.0"}
+    },
+    "initialization_actions": [
+        {"executable_file": "gs://zomato-bucket-stg/init-actions/cloudsql-proxy-init.sh"}
+    ]
 }
+
+ARCHIVE_PREFIX = "archive"
+def move_parquet_to_archive():
+    client = storage.Client(project=PROJECT_ID)
+    bucket_name = "zomato-parquet-dump"
+    folders = ["allfooditems", "ord_ordered_items", "ord_zomato_orders"]
+
+    bucket = client.bucket(bucket_name)
+    for folder in folders:
+        blobs = client.list_blobs(bucket_name, prefix=f"{folder}/")
+        for blob in blobs:
+            # Skip folders
+            if blob.name.endswith("/"):
+                continue
+            # Destination path
+            dest_name = f"{ARCHIVE_PREFIX}/{blob.name}"
+            new_blob = bucket.rename_blob(blob, dest_name)
+            print(f"Moved {blob.name} to {dest_name}")
 
 with DAG(
     "dataproc_pyspark_pipeline",
@@ -112,4 +133,9 @@ with DAG(
         trigger_rule="all_done"  # Ensures deletion even if job fails
     )
 
-    create_cluster >> submit_job >> delete_cluster
+    archive_parquet = PythonOperator(
+        task_id="archive_parquet_files",
+        python_callable=move_parquet_to_archive
+    )
+
+    create_cluster >> submit_job >> delete_cluster >> archive_parquet
