@@ -165,18 +165,44 @@ def extract_all_data(spark, log, env, secrets):
     # check_db_connection(spark, log, env, secrets)
     # jdbc_url, connection_properties = get_db_config(env, secrets)
 
-    # Read food items from JDBC
-    food_items_df = spark.read.parquet("gs://zomato-parquet-dump/food_items/*")
+    food_items_df = spark.read.parquet("gs://zomato-parquet-dump/allfooditems/*")\
+        .select(
+            col("itemid").alias("ItemID"),
+            col("itemname").alias("ItemName"),
+            col("price").alias("Price")
+        )
 
-    # Read parquet files from GCS instead of JDBC for these two tables
-    # ordered_food_df = spark.read.parquet("gs://zomato-parquet-dump/ord_ordered_items/*")
-    # orders_df = spark.read.parquet("gs://zomato-parquet-dump/ord_zomato_orders/*")
-    def read_payload_only(path):
-        return spark.read.parquet(path).select("payload.*")
+    # Helper to read nested payload tables
+    def read_payload_only(path, rename_map=None):
+        df = spark.read.parquet(path).select("payload.*")
+        if rename_map:
+            for old_col, new_col in rename_map.items():
+                df = df.withColumnRenamed(old_col, new_col)
+        return df
 
-    orders_df = read_payload_only("gs://zomato-parquet-dump/ord_zomato_orders/*")
-    ordered_food_df = read_payload_only("gs://zomato-parquet-dump/ord_ordered_items/*")
+    # Read ordered items
+    ordered_food_df = read_payload_only(
+        "gs://zomato-parquet-dump/ord_ordered_items/*",
+        rename_map={
+            "order_id": "OrderID",
+            "item_id": "ItemID",
+            "quantity": "Quantity"
+        }
+    )
 
+    # Read orders
+    orders_df = read_payload_only(
+        "gs://zomato-parquet-dump/ord_zomato_orders/*",
+        rename_map={
+            "city": "City",
+            "orderid": "OrderID",
+            "orderplacedat": "OrderPlacedAt",
+            "billamount": "BillAmount",
+            "riderwaittime": "RiderWaitTime",
+            "kptduration": "KPTDuration",
+            "totalduration": "TotalDuration"
+        }
+    )
 
     food_items_count = food_items_df.count()
     ordered_food_count = ordered_food_df.count()
