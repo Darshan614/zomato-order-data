@@ -64,30 +64,30 @@ def access_secrets(env, gcp_project_id, bq_dataset_name, bq_temp_gcs_bucket):
             "gcp_project_id": gcp_project_id
         }
     
-def get_db_config(env, secrets=None):
-    if secrets is None:
-        secrets = access_secrets(env)
-    jdbc_url = f"jdbc:sqlserver://127.0.0.1:1433;databaseName={secrets['database']};encrypt=false;trustServerCertificate=true"
+# def get_db_config(env, secrets=None):
+#     if secrets is None:
+#         secrets = access_secrets(env)
+#     jdbc_url = f"jdbc:sqlserver://127.0.0.1:1433;databaseName={secrets['database']};encrypt=false;trustServerCertificate=true"
 
-    connection_properties = {   
-        "user": secrets["user"],
-        "password": secrets["password"],
-        "driver": "com.microsoft.sqlserver.jdbc.SQLServerDriver"
-    }
-    return jdbc_url, connection_properties
+#     connection_properties = {   
+#         "user": secrets["user"],
+#         "password": secrets["password"],
+#         "driver": "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+#     }
+#     return jdbc_url, connection_properties
 
-def check_db_connection(spark,log, env, secrets):
-    jdbc_url, connection_properties = get_db_config(env, secrets)
-    log.info("Connecting to database...")
-    log.info(f"JDBC URL: {jdbc_url}")
-    log.info(f"Connection Properties: {connection_properties}")
+# def check_db_connection(spark,log, env, secrets):
+#     jdbc_url, connection_properties = get_db_config(env, secrets)
+#     log.info("Connecting to database...")
+#     log.info(f"JDBC URL: {jdbc_url}")
+#     log.info(f"Connection Properties: {connection_properties}")
 
-    try:
-        df = spark.read.jdbc(jdbc_url,"food.AllFoodItems",properties=connection_properties)
-        log.info("Connection Successfull")
-    except Exception as e:
-        log.error("Connection Failed")
-        log.error(e)
+#     try:
+#         df = spark.read.jdbc(jdbc_url,"food.AllFoodItems",properties=connection_properties)
+#         log.info("Connection Successfull")
+#     except Exception as e:
+#         log.error("Connection Failed")
+#         log.error(e)
 
 def main():
     args = get_args()
@@ -162,15 +162,21 @@ def running_city(order_data_filtered):
     return df
 
 def extract_all_data(spark, log, env, secrets):
-    check_db_connection(spark, log, env, secrets)
-    jdbc_url, connection_properties = get_db_config(env, secrets)
+    # check_db_connection(spark, log, env, secrets)
+    # jdbc_url, connection_properties = get_db_config(env, secrets)
 
     # Read food items from JDBC
-    food_items_df = spark.read.jdbc(jdbc_url, 'food.AllFoodItems', properties=connection_properties)
+    food_items_df = spark.read.parquet("gs://zomato-parquet-dump/food_items/*")
 
     # Read parquet files from GCS instead of JDBC for these two tables
-    ordered_food_df = spark.read.parquet("gs://zomato-parquet-dump/ord_ordered_items/*")
-    orders_df = spark.read.parquet("gs://zomato-parquet-dump/ord_zomato_orders/*")
+    # ordered_food_df = spark.read.parquet("gs://zomato-parquet-dump/ord_ordered_items/*")
+    # orders_df = spark.read.parquet("gs://zomato-parquet-dump/ord_zomato_orders/*")
+    def read_payload_only(path):
+        return spark.read.parquet(path).select("payload.*")
+
+    orders_df = read_payload_only("gs://zomato-parquet-dump/ord_zomato_orders/*")
+    ordered_food_df = read_payload_only("gs://zomato-parquet-dump/ord_ordered_items/*")
+
 
     food_items_count = food_items_df.count()
     ordered_food_count = ordered_food_df.count()
