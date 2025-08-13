@@ -20,7 +20,7 @@ REGION = "asia-south1"
 CLUSTER_NAME = "my-zomato-dataproc-cluster-new"
 
 PYSPARK_JOB = {
-    "reference": {"job_id": "sqlserver_to_bq_job"},
+    "reference": {"job_id": "zomato_gcs_to_bq_job"},
     "placement": {"cluster_name": CLUSTER_NAME},
     "pyspark_job": {
         "main_python_file_uri": "gs://zomato-bucket-stg/pyspark/zomato-spark-gcs-bq.py",

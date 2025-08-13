@@ -127,7 +127,7 @@ with DAG(
 
         trigger_spark = TriggerDagRunOperator(
             task_id="trigger_spark_dag",
-            trigger_id="dataproc_pyspark_pipeline",
+            trigger_dag_id="dataproc_pyspark_pipeline",
             wait_for_completion=False
         )
 
