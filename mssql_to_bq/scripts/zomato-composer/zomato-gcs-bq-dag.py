@@ -39,12 +39,12 @@ def check_gcs_files(gcs_pattern, **kwargs):
     blobs = list(storage_client.list_blobs(bucket_name, prefix=prefix))
 
     if not blobs:
-        EmailOperator(
-            task_id=f'email_no_files_{prefix.replace("/", "_")}',
-            to="jaindarshan849@gmail.com",
-            subject="No AVRO files found for processing",
-            html_content=f"<p>No AVRO files found in path: {gcs_pattern}</p>"
-        ).execute(context=kwargs)
+        # EmailOperator(
+        #     task_id=f'email_no_files_{prefix.replace("/", "_")}',
+        #     to="jaindarshan849@gmail.com",
+        #     subject="No AVRO files found for processing",
+        #     html_content=f"<p>No AVRO files found in path: {gcs_pattern}</p>"
+        # ).execute(context=kwargs)
         raise AirflowSkipException(f"No files found for {gcs_pattern}")
 
 def move_files_to_archive(gcs_pattern, **kwargs):

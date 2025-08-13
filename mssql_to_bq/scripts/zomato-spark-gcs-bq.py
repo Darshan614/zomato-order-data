@@ -3,6 +3,8 @@ import sys
 import argparse
 from pyspark.sql.functions import col, expr, first, sum as Fsum, row_number
 from pyspark.sql.window import Window
+from pyspark import StorageLevel
+from pyspark.sql.functions import broadcast
 import subprocess
 import inspect
 from dependencies.spark import start_spark
@@ -63,31 +65,6 @@ def access_secrets(env, gcp_project_id, bq_dataset_name, bq_temp_gcs_bucket):
             "bq_temp_gcs_bucket": bq_temp_gcs_bucket,
             "gcp_project_id": gcp_project_id
         }
-    
-# def get_db_config(env, secrets=None):
-#     if secrets is None:
-#         secrets = access_secrets(env)
-#     jdbc_url = f"jdbc:sqlserver://127.0.0.1:1433;databaseName={secrets['database']};encrypt=false;trustServerCertificate=true"
-
-#     connection_properties = {   
-#         "user": secrets["user"],
-#         "password": secrets["password"],
-#         "driver": "com.microsoft.sqlserver.jdbc.SQLServerDriver"
-#     }
-#     return jdbc_url, connection_properties
-
-# def check_db_connection(spark,log, env, secrets):
-#     jdbc_url, connection_properties = get_db_config(env, secrets)
-#     log.info("Connecting to database...")
-#     log.info(f"JDBC URL: {jdbc_url}")
-#     log.info(f"Connection Properties: {connection_properties}")
-
-#     try:
-#         df = spark.read.jdbc(jdbc_url,"food.AllFoodItems",properties=connection_properties)
-#         log.info("Connection Successfull")
-#     except Exception as e:
-#         log.error("Connection Failed")
-#         log.error(e)
 
 def main():
     args = get_args()
@@ -123,7 +100,7 @@ def main():
     return 
 
 def join_df(food_items_df, ordered_food_df, orders_df):
-    ordered_food_df = ordered_food_df.join(food_items_df, ordered_food_df.ItemID == food_items_df.ItemID\
+    ordered_food_df = ordered_food_df.join(broadcast(food_items_df), ordered_food_df.ItemID == food_items_df.ItemID\
                     ,how="inner")
     ordered_food_city = ordered_food_df.join(orders_df, \
                     ordered_food_df.OrderID==orders_df.OrderID \
@@ -134,7 +111,7 @@ def column_filter(ordered_food_city, food_items_df, ordered_food_df):
     ordered_food_city = ordered_food_city.select(ordered_food_df['OrderID'].alias('order_id'),food_items_df['ItemID'].alias('item_id')
                                              ,col('Quantity').alias('quantity'),col('ItemName').alias('item_name')
                                              ,col('Price').alias('price'),col('City').alias('city'),col('OrderPlacedAt').alias('order_placed_at')
-                                             ,col('billAmount').alias('bill_amount'),col('RiderWaitTime').alias('rider_wait_time')
+                                             ,col('BillAmount').alias('bill_amount'),col('RiderWaitTime').alias('rider_wait_time')
                                              ,col('KPTDuration').alias('kpt_duration'),col('TotalDuration').alias('total_duration'))
     return ordered_food_city
 
@@ -155,16 +132,13 @@ def running_city(order_data_filtered):
     df = df.withColumn("unique_bill_amount",expr("CASE when row_num=1 THEN unique_bill_amount else 0 end"))
 
     #calculate running total city i.e. revenue over time for each city
+    df = df.repartition("city")
     running_window = Window.partitionBy("city").orderBy("order_placed_at").rowsBetween(Window.unboundedPreceding,
                                                                                     Window.currentRow)
     df = df.withColumn("running_total_city",Fsum("unique_bill_amount").over(running_window))
-    df.limit(5).toPandas()
     return df
 
 def extract_all_data(spark, log, env, secrets):
-    # check_db_connection(spark, log, env, secrets)
-    # jdbc_url, connection_properties = get_db_config(env, secrets)
-
     food_items_df = spark.read.parquet("gs://zomato-parquet-dump/allfooditems/*")\
         .select(
             col("itemid").alias("ItemID"),
@@ -204,6 +178,10 @@ def extract_all_data(spark, log, env, secrets):
         }
     )
 
+    food_items_df = food_items_df.cache()
+    ordered_food_df = ordered_food_df.persist(StorageLevel.MEMORY_AND_DISK)
+    orders_df = orders_df.persist(StorageLevel.MEMORY_AND_DISK)
+
     food_items_count = food_items_df.count()
     ordered_food_count = ordered_food_df.count()
     orders_count = orders_df.count()
@@ -220,7 +198,7 @@ def load_to_bq(order_data_running_city, log, secrets):
         project_id = secrets["gcp_project_id"]
         dataset_name = secrets["bq_dataset_name"]
         temp_gcs_bucket = secrets["bq_temp_gcs_bucket"]
-
+        order_data_running_city = order_data_running_city.coalesce(10)
         order_data_running_city.write\
         .format('bigquery')\
         .option('table', f'{project_id}.{dataset_name}.zomato_orders_trans')\
@@ -232,7 +210,6 @@ def load_to_bq(order_data_running_city, log, secrets):
     except Exception as e:
         log.warn('-------------Failed to write to bigquery-------------')
         log.error(e)
-
 
 if __name__ == '__main__':
     main()
